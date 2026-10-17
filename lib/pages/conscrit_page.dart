@@ -11,14 +11,15 @@ class ConscritPage extends StatefulWidget {
 
 class _ConscritPageState extends State<ConscritPage> {
   final _supabase = Supabase.instance.client;
-  
+
   bool _isLoading = true;
   double _energie = 100.0;
   double _birse = 0.0;
   double _trads = 0.0;
+  DateTime? _startTime;
   String _currentGif = 'conscrit.gif';
   String _activity = 'idle';
-  
+
   Timer? _timer;
 
   @override
@@ -54,6 +55,7 @@ class _ConscritPageState extends State<ConscritPage> {
           'trads': 0.0,
           'current_gif': 'conscrit.gif',
           'activity': 'idle',
+          'start_time': null,
         });
         _startTimer();
       } else {
@@ -63,20 +65,27 @@ class _ConscritPageState extends State<ConscritPage> {
           _trads = (data['trads'] as num).toDouble();
           _currentGif = data['current_gif'] as String;
           _activity = data['activity'] as String;
+          _startTime = data['start_time'] != null
+              ? DateTime.parse(data['start_time'])
+              : null;
         });
-        
+
         // Calcul du temps passé hors-ligne
         if (data['last_updated'] != null) {
           final lastUpdated = DateTime.parse(data['last_updated']);
           final now = DateTime.now().toUtc();
           final differenceInSeconds = now.difference(lastUpdated).inSeconds;
-          
+
           if (differenceInSeconds > 0 && _activity != 'idle') {
             _applyOfflineProgress(differenceInSeconds);
           }
         }
-        
-        _startTimer();
+
+        if (_birse >= 100.0) {
+          _showCongratulations();
+        } else {
+          _startTimer();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -99,10 +108,14 @@ class _ConscritPageState extends State<ConscritPage> {
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_activity != 'idle') {
         setState(() {
           _processTick(secondsMultiplier: 1.0);
+          if (_birse >= 100.0) {
+            _showCongratulations();
+          }
         });
       }
     });
@@ -133,13 +146,14 @@ class _ConscritPageState extends State<ConscritPage> {
 
     double effectiveSeconds = secondsMultiplier;
     bool shouldGoIdle = false;
-    double limitSeconds = double.infinity; // Utilisation de l'infini au lieu de null
+    double limitSeconds =
+        double.infinity; // Utilisation de l'infini au lieu de null
 
     // 1. Limite d'énergie à 0
     if (rateEnergie < 0) {
       double t = _energie / (-rateEnergie);
       if (t < limitSeconds) limitSeconds = t;
-    } 
+    }
     // 2. Limite d'énergie à 100
     else if (rateEnergie > 0) {
       double t = (100.0 - _energie) / rateEnergie;
@@ -168,6 +182,14 @@ class _ConscritPageState extends State<ConscritPage> {
     _birse = (_birse + (rateBirse * effectiveSeconds)).clamp(0.0, 100.0);
     _trads = (_trads + (rateTrads * effectiveSeconds)).clamp(0.0, 100.0);
 
+    // Vérifier si Birse atteint 100
+    if (_birse >= 100.0) {
+      _activity = 'idle';
+      _currentGif = 'conscrit.gif';
+      _timer?.cancel();
+      return;
+    }
+
     // Retour à l'état de repos si la condition d'arrêt est atteinte
     if (shouldGoIdle) {
       _activity = 'idle';
@@ -188,6 +210,7 @@ class _ConscritPageState extends State<ConscritPage> {
         'trads': _trads,
         'current_gif': _currentGif,
         'activity': _activity,
+        'start_time': _startTime?.toIso8601String(),
         // last_updated est géré automatiquement par le trigger Supabase ou default now() si update classique
       });
     } catch (e) {
@@ -197,6 +220,10 @@ class _ConscritPageState extends State<ConscritPage> {
 
   void _toggleActivity(String newActivity, String newGif) {
     setState(() {
+      if (_startTime == null && newActivity != 'idle') {
+        _startTime = DateTime.now().toUtc();
+      }
+
       if (_activity == newActivity) {
         // Clic sur l'activité en cours : on arrête tout
         _activity = 'idle';
@@ -211,7 +238,67 @@ class _ConscritPageState extends State<ConscritPage> {
     _saveStateToSupabase();
   }
 
-  Widget _buildVerticalGauge(String topLabel, String bottomLabel, String title, double value, Color color) {
+  void _showCongratulations() {
+    if (!mounted) return;
+
+    final int seconds = _startTime != null
+        ? DateTime.now().toUtc().difference(_startTime!).inSeconds
+        : 0;
+
+    String def;
+    if (_trads < 10) {
+      def = "crapaud";
+    } else if (_trads < 30) {
+      def = "pek's";
+    } else if (_trads < 70) {
+      def = "trad's";
+    } else {
+      def = "ber's";
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Félicitations !'),
+          content: Text(
+            'Bravo ! Ton conscrit a eu son Zcu en $seconds secondes et est $def !',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _resetState();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _resetState() {
+    setState(() {
+      _energie = 100.0;
+      _birse = 0.0;
+      _trads = 0.0;
+      _activity = 'idle';
+      _currentGif = 'conscrit.gif';
+      _startTime = null;
+    });
+    _saveStateToSupabase();
+    _startTimer();
+  }
+
+  Widget _buildVerticalGauge(
+    String topLabel,
+    String bottomLabel,
+    String title,
+    double value,
+    Color color,
+  ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -233,7 +320,14 @@ class _ConscritPageState extends State<ConscritPage> {
         const SizedBox(height: 8),
         Text(bottomLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 16)),
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: color,
+            fontSize: 16,
+          ),
+        ),
       ],
     );
   }
@@ -257,7 +351,14 @@ class _ConscritPageState extends State<ConscritPage> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              const Text('Énergie', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+              const Text(
+                'Énergie',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.green,
+                ),
+              ),
               const SizedBox(height: 8),
               SizedBox(
                 width: 250,
@@ -304,10 +405,15 @@ class _ConscritPageState extends State<ConscritPage> {
                           'assets/$_currentGif',
                           width: 120, // Exactement la moitié du cadre (240x240)
                           height: 120,
-                          fit: BoxFit.contain, // S'assure que le ratio est conservé
+                          fit: BoxFit
+                              .contain, // S'assure que le ratio est conservé
                           filterQuality: FilterQuality.none,
                           errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.person, size: 120, color: Colors.grey);
+                            return const Icon(
+                              Icons.person,
+                              size: 120,
+                              color: Colors.grey,
+                            );
                           },
                         ),
                       ),
@@ -317,7 +423,13 @@ class _ConscritPageState extends State<ConscritPage> {
               ),
 
               // Jauge Droite : Trad's
-              _buildVerticalGauge("Bapt's", 'HU', "Trad's", _trads, Colors.orange),
+              _buildVerticalGauge(
+                'beru',
+                'HU',
+                "Trad's",
+                _trads,
+                Colors.orange,
+              ),
             ],
           ),
 
@@ -366,17 +478,15 @@ class _ConscritPageState extends State<ConscritPage> {
       style: ElevatedButton.styleFrom(
         backgroundColor: isActive ? color.shade200 : color.shade50,
         foregroundColor: isActive ? color.shade900 : color.shade700,
-        side: isActive ? BorderSide(color: color.shade800, width: 2) : BorderSide.none,
+        side: isActive
+            ? BorderSide(color: color.shade800, width: 2)
+            : BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         elevation: isActive ? 0 : 2,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon),
-          const SizedBox(height: 4),
-          Text(title),
-        ],
+        children: [Icon(icon), const SizedBox(height: 4), Text(title)],
       ),
     );
   }
