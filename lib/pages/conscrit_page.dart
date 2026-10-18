@@ -13,8 +13,11 @@ class ConscritPage extends StatefulWidget {
   State<ConscritPage> createState() => _ConscritPageState();
 }
 
-class _ConscritPageState extends State<ConscritPage> {
+class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClientMixin {
   final _supabase = Supabase.instance.client;
+
+  @override
+  bool get wantKeepAlive => true;
 
   bool _isLoading = true;
   double _energie = 100.0;
@@ -571,6 +574,8 @@ class _ConscritPageState extends State<ConscritPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Requis par AutomaticKeepAliveClientMixin
+    
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }

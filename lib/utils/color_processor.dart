@@ -45,7 +45,7 @@ class ColorProcessor {
     try {
       // Lire le fichier asset
       final ByteData data = await rootBundle.load(assetPath);
-      final Uint8List bytes = data.buffer.asUint8List();
+      final Uint8List bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 
       // Décoder l'image PNG
       final img.Image? decodedImage = img.decodePng(bytes);
@@ -119,7 +119,7 @@ class ColorProcessor {
     
     for (String asset in assetsToProcess) {
       final ByteData data = await rootBundle.load('assets/$asset');
-      rawImages[asset] = data.buffer.asUint8List();
+      rawImages[asset] = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     }
 
     // 2. Préparer la requête

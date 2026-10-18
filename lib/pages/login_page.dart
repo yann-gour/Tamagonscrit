@@ -1,5 +1,10 @@
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../widgets/sprite_sheet_animator.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,7 +18,40 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  Uint8List? _spriteBytes;
+  bool _isLoadingSprite = true;
+
   final supabase = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRandomSprite();
+  }
+
+  Future<void> _loadRandomSprite() async {
+    final spriteNames = ['conscrit.png', 'birse.png', 'ronque.png', 'monome.png'];
+    final selectedSprite = spriteNames[Random().nextInt(spriteNames.length)];
+
+    try {
+      final data = await rootBundle.load('assets/$selectedSprite');
+      final rawBytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+
+      if (mounted) {
+        setState(() {
+          _spriteBytes = rawBytes;
+          _isLoadingSprite = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur lors du chargement du sprite asset: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingSprite = false;
+        });
+      }
+    }
+  }
 
   Future<void> _signIn() async {
     setState(() => _isLoading = true);
@@ -82,9 +120,42 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Image.asset(
-                  'assets/logo.png',
-                  height: 100,
+                Center(
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.black12, width: 2),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.asset(
+                            'assets/fond.png',
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.none,
+                          ),
+                          Center(
+                            child: _isLoadingSprite
+                                ? const CircularProgressIndicator()
+                                : _spriteBytes != null
+                                    ? SpriteSheetAnimator(
+                                        imageBytes: _spriteBytes!,
+                                        frameCount: 2,
+                                        frameDuration:
+                                            const Duration(milliseconds: 600),
+                                        width: 120,
+                                        height: 120,
+                                      )
+                                    : const Icon(Icons.error, color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 32),
                 TextField(
