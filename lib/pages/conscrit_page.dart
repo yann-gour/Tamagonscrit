@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
+import 'dart:typed_data';
+import '../utils/color_processor.dart';
+import '../utils/color_palettes.dart';
+import '../widgets/sprite_sheet_animator.dart';
 
 class ConscritPage extends StatefulWidget {
   const ConscritPage({super.key});
@@ -17,8 +21,16 @@ class _ConscritPageState extends State<ConscritPage> {
   double _birse = 0.0;
   double _trads = 0.0;
   DateTime? _startTime;
-  String _currentGif = 'conscrit.gif';
+  String _currentImage = 'conscrit.png';
   String _activity = 'idle';
+
+  Color _skinColor = ColorPalettes.getRandomSkinColor();
+  Color _hairColor = ColorPalettes.getRandomHairColor();
+  Color _tshirtColor = ColorPalettes.getRandomClothesColor();
+  Color _pantsColor = ColorPalettes.getRandomClothesColor();
+  
+  Map<String, Uint8List> _imageCache = {};
+  bool _isProcessingImages = false;
 
   Timer? _timer;
 
@@ -53,9 +65,13 @@ class _ConscritPageState extends State<ConscritPage> {
           'energie': 100.0,
           'birse': 0.0,
           'trads': 0.0,
-          'current_gif': 'conscrit.gif',
+          'current_gif': 'conscrit.png',
           'activity': 'idle',
           'start_time': null,
+          'skin_color': ColorProcessor.colorToHex(_skinColor),
+          'hair_color': ColorProcessor.colorToHex(_hairColor),
+          'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
+          'pants_color': ColorProcessor.colorToHex(_pantsColor),
         });
         _startTimer();
       } else {
@@ -63,11 +79,28 @@ class _ConscritPageState extends State<ConscritPage> {
           _energie = (data['energie'] as num).toDouble();
           _birse = (data['birse'] as num).toDouble();
           _trads = (data['trads'] as num).toDouble();
-          _currentGif = data['current_gif'] as String;
+          
+          // Compatibilité : si c'est encore un gif en DB, on force le png
+          String gifFromDb = data['current_gif'] as String;
+          _currentImage = gifFromDb.replaceAll('.gif', '.png');
+          
           _activity = data['activity'] as String;
           _startTime = data['start_time'] != null
               ? DateTime.parse(data['start_time'])
               : null;
+
+          if (data['skin_color'] != null) {
+            _skinColor = ColorProcessor.colorFromHex(data['skin_color']);
+          }
+          if (data['hair_color'] != null) {
+            _hairColor = ColorProcessor.colorFromHex(data['hair_color']);
+          }
+          if (data['tshirt_color'] != null) {
+            _tshirtColor = ColorProcessor.colorFromHex(data['tshirt_color']);
+          }
+          if (data['pants_color'] != null) {
+            _pantsColor = ColorProcessor.colorFromHex(data['pants_color']);
+          }
         });
 
         // Calcul du temps passé hors-ligne
@@ -87,6 +120,10 @@ class _ConscritPageState extends State<ConscritPage> {
           _startTimer();
         }
       }
+      
+      // On lance la pré-génération de TOUTES les images
+      await _preloadAllImages();
+      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -97,6 +134,28 @@ class _ConscritPageState extends State<ConscritPage> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _preloadAllImages() async {
+    if (_isProcessingImages) return;
+    setState(() {
+      _isProcessingImages = true;
+    });
+
+    final newCache = await ColorProcessor.processAllImagesInBackground(
+      newSkinColor: _skinColor,
+      newHairColor: _hairColor,
+      newTshirtColor: _tshirtColor,
+      newPantsColor: _pantsColor,
+      isBiaudeWhite: _birse >= 50.0,
+    );
+
+    if (mounted) {
+      setState(() {
+        _imageCache = newCache;
+        _isProcessingImages = false;
+      });
     }
   }
 
@@ -185,7 +244,7 @@ class _ConscritPageState extends State<ConscritPage> {
     // Vérifier si Birse atteint 100
     if (_birse >= 100.0) {
       _activity = 'idle';
-      _currentGif = 'conscrit.gif';
+      _currentImage = 'conscrit.png';
       _timer?.cancel();
       return;
     }
@@ -193,8 +252,15 @@ class _ConscritPageState extends State<ConscritPage> {
     // Retour à l'état de repos si la condition d'arrêt est atteinte
     if (shouldGoIdle) {
       _activity = 'idle';
-      _currentGif = 'conscrit.gif';
+      _currentImage = 'conscrit.png';
       _saveStateToSupabase();
+    }
+    
+    // Mettre à jour l'image si on passe le cap des 50 birse (biaude blanche)
+    // On vérifie le changement d'état pour ne pas le faire à chaque tick
+    final wasBelow50 = (_birse - (rateBirse * effectiveSeconds)) < 50.0;
+    if (wasBelow50 && _birse >= 50.0) {
+      _show100JoursPopup();
     }
   }
 
@@ -208,9 +274,13 @@ class _ConscritPageState extends State<ConscritPage> {
         'energie': _energie,
         'birse': _birse,
         'trads': _trads,
-        'current_gif': _currentGif,
+        'current_gif': _currentImage,
         'activity': _activity,
         'start_time': _startTime?.toIso8601String(),
+        'skin_color': ColorProcessor.colorToHex(_skinColor),
+        'hair_color': ColorProcessor.colorToHex(_hairColor),
+        'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
+        'pants_color': ColorProcessor.colorToHex(_pantsColor),
         // last_updated est géré automatiquement par le trigger Supabase ou default now() si update classique
       });
     } catch (e) {
@@ -218,7 +288,33 @@ class _ConscritPageState extends State<ConscritPage> {
     }
   }
 
-  void _toggleActivity(String newActivity, String newGif) {
+  void _showExhaustedDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Conscrit épuisé !'),
+          content: const Text(
+            'Ton conscrit n\'a plus d\'énergie ! Il doit ronquer pour se reposer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _toggleActivity(String newActivity, String newImage) {
+    if (_energie <= 0 && (newActivity == 'birse' || newActivity == 'monome')) {
+      _showExhaustedDialog();
+      return;
+    }
+
     setState(() {
       if (_startTime == null && newActivity != 'idle') {
         _startTime = DateTime.now().toUtc();
@@ -227,13 +323,14 @@ class _ConscritPageState extends State<ConscritPage> {
       if (_activity == newActivity) {
         // Clic sur l'activité en cours : on arrête tout
         _activity = 'idle';
-        _currentGif = 'conscrit.gif';
+        _currentImage = 'conscrit.png';
       } else {
         // Changement d'activité
         _activity = newActivity;
-        _currentGif = newGif;
+        _currentImage = newImage;
       }
     });
+    // Plus besoin de recalculer l'image, elle est déjà dans _imageCache !
     // On sauvegarde l'état en base de données dès qu'on change d'activité
     _saveStateToSupabase();
   }
@@ -279,17 +376,149 @@ class _ConscritPageState extends State<ConscritPage> {
     );
   }
 
+  void _show100JoursPopup() {
+    if (!mounted) return;
+
+    // Met le conscrit au repos (stoppe la jauge de trad's pour éviter des bugs)
+    setState(() {
+      _activity = 'idle';
+      _currentImage = 'conscrit.png';
+    });
+    _timer?.cancel();
+    _saveStateToSupabase();
+
+    // On lance la génération des assets avec la biaude blanche
+    // Le spinner tournera sous le popup
+    _preloadAllImages();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("C'est les 100 jours !"),
+          content: const Text("Ton conscrit a obtenu sa blanche !"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Relancer le timer d'idle
+                _startTimer();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _resetState() {
     setState(() {
       _energie = 100.0;
       _birse = 0.0;
       _trads = 0.0;
       _activity = 'idle';
-      _currentGif = 'conscrit.gif';
+      _currentImage = 'conscrit.png';
       _startTime = null;
+      _skinColor = ColorPalettes.getRandomSkinColor();
+      _hairColor = ColorPalettes.getRandomHairColor();
+      _tshirtColor = ColorPalettes.getRandomClothesColor();
+      _pantsColor = ColorPalettes.getRandomClothesColor();
     });
+    // On génère les 4 nouvelles images en arrière-plan
+    _preloadAllImages();
     _saveStateToSupabase();
     _startTimer();
+  }
+
+  double _getStatRate(String stat) {
+    switch (_activity) {
+      case 'birse':
+        if (stat == 'energie') return -1.0;
+        if (stat == 'birse') return 1.5;
+        if (stat == 'trads') return -1.5;
+        break;
+      case 'ronque':
+        if (stat == 'energie') return 2.5;
+        break;
+      case 'monome':
+        if (stat == 'energie') return -1.5;
+        if (stat == 'trads') return 1.5;
+        break;
+      case 'idle':
+      default:
+        return 0.0;
+    }
+    return 0.0;
+  }
+
+  String _formatDuration(int totalSeconds) {
+    if (totalSeconds <= 0) return '0s';
+    if (totalSeconds < 60) {
+      return '${totalSeconds}s';
+    }
+    final minutes = totalSeconds ~/ 60;
+    final remainingSeconds = totalSeconds % 60;
+    if (minutes < 60) {
+      if (remainingSeconds == 0) {
+        return '${minutes}m';
+      }
+      return '${minutes}m ${remainingSeconds}s';
+    }
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+    if (remainingMinutes == 0) {
+      return '${hours}h';
+    }
+    return '${hours}h ${remainingMinutes}m';
+  }
+
+  Widget _buildEnergyRemainingTime() {
+    final rate = _getStatRate('energie');
+    if (rate == 0) return const SizedBox.shrink();
+
+    int secondsRemaining = 0;
+    Color textColor = Colors.green;
+
+    if (rate < 0) {
+      if (_energie <= 0) return const SizedBox.shrink();
+      secondsRemaining = (_energie / (-rate)).ceil();
+      textColor = Colors.red;
+    } else if (rate > 0) {
+      if (_energie >= 100.0) return const SizedBox.shrink();
+      secondsRemaining = ((100.0 - _energie) / rate).ceil();
+      textColor = Colors.green;
+    }
+
+    final formatted = _formatDuration(secondsRemaining);
+
+    return Text(
+      ' ($formatted)',
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: textColor,
+      ),
+    );
+  }
+
+  Widget _buildTrendIndicator(String stat, {double iconSize = 20}) {
+    final rate = _getStatRate(stat);
+    if (rate > 0) {
+      return Icon(
+        Icons.arrow_upward,
+        color: Colors.green,
+        size: iconSize,
+      );
+    } else if (rate < 0) {
+      return Icon(
+        Icons.arrow_downward,
+        color: Colors.red,
+        size: iconSize,
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildVerticalGauge(
@@ -298,6 +527,7 @@ class _ConscritPageState extends State<ConscritPage> {
     String title,
     double value,
     Color color,
+    String statKey,
   ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -320,13 +550,20 @@ class _ConscritPageState extends State<ConscritPage> {
         const SizedBox(height: 8),
         Text(bottomLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color,
-            fontSize: 16,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(width: 2),
+            _buildTrendIndicator(statKey, iconSize: 18),
+          ],
         ),
       ],
     );
@@ -351,13 +588,22 @@ class _ConscritPageState extends State<ConscritPage> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Énergie',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.green,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Énergie',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  _buildTrendIndicator('energie', iconSize: 22),
+                  _buildEnergyRemainingTime(),
+                ],
               ),
               const SizedBox(height: 8),
               SizedBox(
@@ -378,7 +624,14 @@ class _ConscritPageState extends State<ConscritPage> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               // Jauge Gauche : Birse
-              _buildVerticalGauge('Zcu', 'RKL', 'Birse', _birse, Colors.purple),
+              _buildVerticalGauge(
+                'Zcu',
+                'RKL',
+                'Birse',
+                _birse,
+                Colors.purple,
+                'birse',
+              ),
 
               // Image Centrale
               Container(
@@ -401,21 +654,19 @@ class _ConscritPageState extends State<ConscritPage> {
                       ),
                       // GIF du Conscrit par-dessus
                       Center(
-                        child: Image.asset(
-                          'assets/$_currentGif',
-                          width: 120, // Exactement la moitié du cadre (240x240)
-                          height: 120,
-                          fit: BoxFit
-                              .contain, // S'assure que le ratio est conservé
-                          filterQuality: FilterQuality.none,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.person,
-                              size: 120,
-                              color: Colors.grey,
-                            );
-                          },
-                        ),
+                        child: _isProcessingImages
+                            ? const CircularProgressIndicator()
+                            : _imageCache[_currentImage] != null
+                                ? SpriteSheetAnimator(
+                                    // Utilisation de l'image cachée
+                                    imageBytes: _imageCache[_currentImage]!,
+                                    frameCount: 2,
+                                    frameDuration:
+                                        const Duration(milliseconds: 600),
+                                    width: 120,
+                                    height: 120,
+                                  )
+                                : const Icon(Icons.error, color: Colors.red),
                       ),
                     ],
                   ),
@@ -429,6 +680,7 @@ class _ConscritPageState extends State<ConscritPage> {
                 "Trad's",
                 _trads,
                 Colors.orange,
+                'trads',
               ),
             ],
           ),
@@ -441,21 +693,21 @@ class _ConscritPageState extends State<ConscritPage> {
                 title: 'Birser',
                 icon: Icons.edit,
                 activityId: 'birse',
-                gifName: 'birse.gif',
+                imageName: 'birse.png',
                 color: Colors.purple,
               ),
               _buildActionButton(
                 title: 'Ronquer',
                 icon: Icons.bed,
                 activityId: 'ronque',
-                gifName: 'ronque.gif',
+                imageName: 'ronque.png',
                 color: Colors.blue,
               ),
               _buildActionButton(
                 title: 'Monômer',
                 icon: Icons.groups,
                 activityId: 'monome',
-                gifName: 'monome.gif',
+                imageName: 'monome.png',
                 color: Colors.orange,
               ),
             ],
@@ -469,12 +721,12 @@ class _ConscritPageState extends State<ConscritPage> {
     required String title,
     required IconData icon,
     required String activityId,
-    required String gifName,
+    required String imageName,
     required MaterialColor color,
   }) {
     final isActive = _activity == activityId;
     return ElevatedButton(
-      onPressed: () => _toggleActivity(activityId, gifName),
+      onPressed: () => _toggleActivity(activityId, imageName),
       style: ElevatedButton.styleFrom(
         backgroundColor: isActive ? color.shade200 : color.shade50,
         foregroundColor: isActive ? color.shade900 : color.shade700,

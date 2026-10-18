@@ -82,10 +82,9 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
-                  Icons.person,
-                  size: 80,
-                  color: Colors.deepPurple,
+                Image.asset(
+                  'assets/logo.png',
+                  height: 100,
                 ),
                 const SizedBox(height: 32),
                 TextField(
