@@ -9,6 +9,7 @@ import '../utils/color_palettes.dart';
 import '../utils/conscrit_names.dart';
 import '../widgets/sprite_sheet_animator.dart';
 import '../models/random_event.dart';
+import '../constants/stat_weights.dart';
 import 'monome_page.dart';
 
 class ConscritPage extends StatefulWidget {
@@ -322,36 +323,11 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   }
 
   void _processTick({required double secondsMultiplier}) {
-    double rateEnergie = 0;
-    double rateBirse = 0;
-    double rateTrads = 0;
+    if (_activity == 'idle') return;
 
-    switch (_activity) {
-      case 'birse':
-        rateEnergie = -1.0;
-        rateBirse = 1.5;
-        rateTrads = -1.5;
-        break;
-      case 'ronque':
-        rateEnergie = 2.5;
-        break;
-      case 'monome':
-        rateEnergie = -1.5;
-        rateTrads = 1.5;
-        break;
-      case 'chouille':
-        rateEnergie = -2.0;
-        rateBirse = -0.75;
-        rateTrads = 0.75;
-        break;
-      case 'fins':
-        rateEnergie = 2.5;
-        rateTrads = 0.75;
-        break;
-      case 'idle':
-      default:
-        return;
-    }
+    double rateEnergie = _getStatRate('energie');
+    double rateBirse = _getStatRate('birse');
+    double rateTrads = _getStatRate('trads');
 
     double effectiveSeconds = secondsMultiplier;
     bool shouldGoIdle = false;
@@ -719,25 +695,25 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   double _getStatRate(String stat) {
     switch (_activity) {
       case 'birse':
-        if (stat == 'energie') return -1.0;
-        if (stat == 'birse') return 1.5;
-        if (stat == 'trads') return -1.5;
+        if (stat == 'energie') return -1.0 * StatWeights.weightEnergie;
+        if (stat == 'birse') return 1.5 * StatWeights.weightBirse;
+        if (stat == 'trads') return -1.5 * StatWeights.weightTrads;
         break;
       case 'ronque':
-        if (stat == 'energie') return 2.5;
+        if (stat == 'energie') return 2.5 * StatWeights.weightEnergie;
         break;
       case 'monome':
-        if (stat == 'energie') return -1.5;
-        if (stat == 'trads') return 1.5;
+        if (stat == 'energie') return -1.5 * StatWeights.weightEnergie;
+        if (stat == 'trads') return 1.5 * StatWeights.weightTrads;
         break;
       case 'chouille':
-        if (stat == 'energie') return -2.0;
-        if (stat == 'birse') return -0.75;
-        if (stat == 'trads') return 0.75;
+        if (stat == 'energie') return -2.0 * StatWeights.weightEnergie;
+        if (stat == 'birse') return -0.75 * StatWeights.weightBirse;
+        if (stat == 'trads') return 0.75 * StatWeights.weightTrads;
         break;
       case 'fins':
-        if (stat == 'energie') return 2.5;
-        if (stat == 'trads') return 0.75;
+        if (stat == 'energie') return 2.5 * StatWeights.weightEnergie;
+        if (stat == 'trads') return 0.75 * StatWeights.weightTrads;
         break;
       case 'idle':
       default:

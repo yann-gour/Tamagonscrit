@@ -326,10 +326,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
   Widget _buildTopGadzView() {
     if (_gadzScores.isEmpty) {
-      return const Center(
-        child: Text(
-          style: TextStyle(fontSize: 16),
-        ),
+      return Center(
+        child: const Text("Aucun Gadz's enregistré.", style: TextStyle(fontSize: 16)),
       );
     }
 
@@ -345,13 +343,13 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
         final List<String> details = [];
         if (item.fams != null && item.fams!.isNotEmpty) {
-          details.add('Fam\'s : ${item.fams}');
+          details.add("Fam's : ${item.fams}");
         }
         if (item.tabagns != null && item.tabagns!.isNotEmpty) {
-          details.add('Tabagn\'s : ${item.tabagns}');
+          details.add("Tabagn's : ${item.tabagns}");
         }
         if (item.proms != null) {
-          details.add('Prom\'s : ${item.proms}');
+          details.add("Prom's : ${item.proms}");
         }
 
         final subtitleText = details.isNotEmpty
@@ -383,9 +381,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                       color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Text(
-                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
+                    child: Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
               ],
             ),
@@ -394,7 +390,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
             trailing: Text(
-              '${_formatScore(item.score)} Trad\'s',
+              "${_formatScore(item.score)} Trad's",
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -409,13 +405,20 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
   Widget _buildTopTabagnsView() {
     if (_tabagnsScores.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Aucun Tabagn\'s enregistré.',
+          "Aucun Tabagn's enregistré.",
           style: TextStyle(fontSize: 16),
         ),
       );
     }
+
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
+          (g) => g?.userId == currentUserId,
+          orElse: () => null,
+        );
+    final myTabagns = myGadz?.tabagns;
 
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -424,18 +427,35 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       itemBuilder: (context, index) {
         final item = _tabagnsScores[index];
         final fullName = _tabagnsFullNames[item.tabagns] ?? item.tabagns;
+        final isMyTabagns = myTabagns != null && myTabagns.isNotEmpty && myTabagns == item.tabagns;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: isMyTabagns ? 3 : 1,
+          color: isMyTabagns ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
           child: ListTile(
             leading: _buildRankWidget(index),
-            title: Text(
-              fullName,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    fullName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                if (isMyTabagns)
+                  Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+              ],
             ),
-            subtitle: Text(
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            ),
+            subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
             trailing: Text(
               '${_formatScore(item.score)} Trad\'s',
               style: const TextStyle(
@@ -452,13 +472,20 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
   Widget _buildTopPromsView() {
     if (_promsScores.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Aucune Prom\'s enregistrée.',
+          "Aucune Prom's enregistrée.",
           style: TextStyle(fontSize: 16),
         ),
       );
     }
+
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
+          (g) => g?.userId == currentUserId,
+          orElse: () => null,
+        );
+    final myProms = myGadz?.proms;
 
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -466,18 +493,35 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       itemCount: _promsScores.length,
       itemBuilder: (context, index) {
         final item = _promsScores[index];
+        final isMyProms = myProms != null && myProms == item.proms;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: isMyProms ? 3 : 1,
+          color: isMyProms ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
           child: ListTile(
             leading: _buildRankWidget(index),
-            title: Text(
-              'Prom\'s ${item.proms}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Prom\'s ${item.proms}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                if (isMyProms)
+                  Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+              ],
             ),
-            subtitle: Text(
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            ),
+            subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
             trailing: Text(
               '${_formatScore(item.score)} Trad\'s',
               style: const TextStyle(
