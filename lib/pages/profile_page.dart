@@ -5,12 +5,20 @@ import '../main.dart'; // Pour accéder à themeNotifier
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
+  static const List<String> tabagnsList = ['Ai', 'An', 'Bo', 'Ch', 'Cl', 'Li', 'Me'];
+
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
   final supabase = Supabase.instance.client;
+
+  final _bucqueController = TextEditingController();
+  final _famsController = TextEditingController();
+  String? _selectedTabagns;
+  final _promsController = TextEditingController();
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -18,24 +26,84 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = supabase.auth.currentUser?.email ?? '';
+    final user = supabase.auth.currentUser;
+    _emailController.text = user?.email ?? '';
+
+    final metadata = user?.userMetadata ?? {};
+    _bucqueController.text = metadata['bucque']?.toString() ?? '';
+    _famsController.text = metadata['fams']?.toString() ?? '';
+    final savedTabagns = metadata['tabagns']?.toString();
+    if (savedTabagns != null && ProfilePage.tabagnsList.contains(savedTabagns)) {
+      _selectedTabagns = savedTabagns;
+    }
+    _promsController.text = metadata['proms']?.toString() ?? '';
   }
 
   Future<void> _updateProfile() async {
+    final bucque = _bucqueController.text.trim();
+    if (bucque.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La bucque est obligatoire.')),
+      );
+      return;
+    }
+
+    final famsStr = _famsController.text.trim();
+    final String? fams = famsStr.isNotEmpty ? famsStr : null;
+
+    int? proms;
+    final promsStr = _promsController.text.trim();
+    if (promsStr.isNotEmpty) {
+      proms = int.tryParse(promsStr);
+      if (proms == null || proms < 100 || proms > 999) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La prom\'s doit être un nombre entre 100 et 999.')),
+        );
+        return;
+      }
+    }
+
     setState(() => _isLoading = true);
     try {
-      final String? newEmail = _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null;
-      final String? newPassword = _passwordController.text.trim().isNotEmpty ? _passwordController.text.trim() : null;
+      final String? newEmail =
+          _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null;
+      final String? newPassword =
+          _passwordController.text.trim().isNotEmpty ? _passwordController.text.trim() : null;
 
-      if (newEmail != null || newPassword != null) {
-        await supabase.auth.updateUser(UserAttributes(
-          email: newEmail,
-          password: newPassword,
-        ));
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil mis à jour !')));
-          _passwordController.clear();
+      final updatedMetadata = <String, dynamic>{
+        'bucque': bucque,
+        'fams': fams,
+        'tabagns': _selectedTabagns,
+        'proms': proms,
+      };
+
+      await supabase.auth.updateUser(UserAttributes(
+        email: newEmail,
+        password: newPassword,
+        data: updatedMetadata,
+      ));
+
+      final currentUser = supabase.auth.currentUser;
+      if (currentUser != null) {
+        try {
+          await supabase.from('profiles').upsert({
+            'id': currentUser.id,
+            'bucque': bucque,
+            'fams': fams,
+            'tabagns': _selectedTabagns,
+            'proms': proms,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          });
+        } catch (e) {
+          debugPrint('Erreur de synchro profiles: $e');
         }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profil mis à jour avec succès !')),
+        );
+        _passwordController.clear();
       }
     } on AuthException catch (error) {
       if (mounted) {
@@ -55,13 +123,15 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _signOut() async {
     await supabase.auth.signOut();
     if (mounted) {
-      // Retourne à la page précédente qui est l'AuthGate qui captera le changement d'état.
       Navigator.pop(context);
     }
   }
 
   @override
   void dispose() {
+    _bucqueController.dispose();
+    _famsController.dispose();
+    _promsController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -83,7 +153,67 @@ class _ProfilePageState extends State<ProfilePage> {
                   radius: 50,
                   child: Icon(Icons.person, size: 50),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                const Text(
+                  'Informations Gadz\'arts',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _bucqueController,
+                  decoration: const InputDecoration(
+                    labelText: 'Bucque *',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _famsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Fam\'s',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedTabagns,
+                  decoration: const InputDecoration(
+                    labelText: 'Tabagn\'s',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('Aucun'),
+                    ),
+                    ...ProfilePage.tabagnsList.map((t) => DropdownMenuItem<String>(
+                          value: t,
+                          child: Text(t),
+                        )),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedTabagns = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _promsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Prom\'s',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
+                const Text(
+                  'Compte & Sécurité',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _emailController,
                   decoration: const InputDecoration(
@@ -111,7 +241,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: const Text('Mettre à jour'),
+                    child: const Text('Mettre à jour le profil'),
                   ),
                 const SizedBox(height: 32),
                 const Divider(),
