@@ -19,6 +19,9 @@ class _HomePageState extends State<HomePage> {
   ];
 
   void _onItemTapped(int index) {
+    if (index == 1) {
+      monomeRefreshNotifier.value++;
+    }
     setState(() {
       _selectedIndex = index;
     });

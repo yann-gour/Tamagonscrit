@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import '../utils/color_processor.dart';
 import '../utils/color_palettes.dart';
 import '../widgets/sprite_sheet_animator.dart';
+import 'monome_page.dart';
 
 class ConscritPage extends StatefulWidget {
   const ConscritPage({super.key});
@@ -34,6 +35,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   
   Map<String, Uint8List> _imageCache = {};
   bool _isProcessingImages = false;
+  bool _hasSavedCompletion = false;
 
   Timer? _timer;
 
@@ -338,6 +340,33 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     _saveStateToSupabase();
   }
 
+  Future<void> _saveCompletedConscrit(String rank, int seconds) async {
+    if (_hasSavedCompletion) return;
+    _hasSavedCompletion = true;
+
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _supabase.from('conscrits').insert({
+        'user_id': user.id,
+        'trads': _trads,
+        'rank': rank,
+        'skin_color': ColorProcessor.colorToHex(_skinColor),
+        'hair_color': ColorProcessor.colorToHex(_hairColor),
+        'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
+        'pants_color': ColorProcessor.colorToHex(_pantsColor),
+        'duration_seconds': seconds,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+      debugPrint('Conscrit terminé enregistré avec succès dans Supabase.');
+      // Rafraîchir immédiatement le monôme
+      monomeRefreshNotifier.value++;
+    } catch (e) {
+      debugPrint('Erreur lors de la sauvegarde du conscrit terminé: $e');
+    }
+  }
+
   void _showCongratulations() {
     if (!mounted) return;
 
@@ -355,6 +384,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     } else {
       def = "ber's";
     }
+
+    _saveCompletedConscrit(def, seconds);
 
     showDialog(
       context: context,
@@ -417,6 +448,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   }
 
   void _resetState() {
+    _hasSavedCompletion = false;
     setState(() {
       _energie = 100.0;
       _birse = 0.0;

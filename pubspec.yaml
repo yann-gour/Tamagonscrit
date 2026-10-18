@@ -76,6 +76,7 @@ flutter:
     - assets/conscrit.png
     - assets/birse.png
     - assets/monome.png
+    - assets/monome_zg.png
     - assets/ronque.png
     - assets/fond.png
   #   - images/a_dot_burr.jpeg

@@ -22,6 +22,18 @@ class ColorProcessRequest {
   });
 }
 
+class MonomeZgRequest {
+  final Uint8List rawMonomeZgBytes;
+  final Color skinColor;
+  final Color hairColor;
+
+  MonomeZgRequest({
+    required this.rawMonomeZgBytes,
+    required this.skinColor,
+    required this.hairColor,
+  });
+}
+
 class ColorProcessor {
   // Couleurs cibles originales (au format ARGB utilisé par la librairie image)
   // Attention: la librairie image encode généralement les couleurs en 0xAABBGGRR 
@@ -197,13 +209,73 @@ class ColorProcessor {
     return processedImages;
   }
 
-  /// Parse une couleur depuis un string Hex (ex: "#FF00FF")
-  static Color colorFromHex(String hexColor) {
-    hexColor = hexColor.toUpperCase().replaceAll("#", "");
-    if (hexColor.length == 6) {
-      hexColor = "FF$hexColor";
+  /// Traite la sprite sheet monome_zg.png pour un conscrit spécifique.
+  static Future<Uint8List?> processMonomeZg({
+    required Uint8List rawMonomeZgBytes,
+    required Color skinColor,
+    required Color hairColor,
+  }) async {
+    final request = MonomeZgRequest(
+      rawMonomeZgBytes: rawMonomeZgBytes,
+      skinColor: skinColor,
+      hairColor: hairColor,
+    );
+    return await compute(_processMonomeZgInIsolate, request);
+  }
+
+  static Uint8List? _processMonomeZgInIsolate(MonomeZgRequest request) {
+    try {
+      final img.Image? decodedImage = img.decodePng(request.rawMonomeZgBytes);
+      if (decodedImage == null) return null;
+
+      final skinR = (request.skinColor.r * 255).toInt();
+      final skinG = (request.skinColor.g * 255).toInt();
+      final skinB = (request.skinColor.b * 255).toInt();
+
+      final hairR = (request.hairColor.r * 255).toInt();
+      final hairG = (request.hairColor.g * 255).toInt();
+      final hairB = (request.hairColor.b * 255).toInt();
+
+      for (final pixel in decodedImage) {
+        final r = pixel.r;
+        final g = pixel.g;
+        final b = pixel.b;
+
+        // Remplacement de la Peau
+        if (r == origSkinR && g == origSkinG && b == origSkinB) {
+          pixel.r = skinR;
+          pixel.g = skinG;
+          pixel.b = skinB;
+          pixel.a = 255;
+        }
+        // Remplacement des Cheveux
+        else if (r == origHairR && g == origHairG && b == origHairB) {
+          pixel.r = hairR;
+          pixel.g = hairG;
+          pixel.b = hairB;
+          pixel.a = 255;
+        }
+      }
+
+      return img.encodePng(decodedImage);
+    } catch (e) {
+      debugPrint('Erreur lors du traitement de monome_zg: $e');
+      return null;
     }
-    return Color(int.parse(hexColor, radix: 16));
+  }
+
+  /// Parse une couleur depuis un string Hex (ex: "#FF00FF") avec valeur par défaut
+  static Color colorFromHex(String? hexColor, {Color fallback = const Color(0xFFE5AA7A)}) {
+    if (hexColor == null || hexColor.trim().isEmpty) return fallback;
+    try {
+      var hex = hexColor.trim().toUpperCase().replaceAll("#", "");
+      if (hex.length == 6) {
+        hex = "FF$hex";
+      }
+      return Color(int.parse(hex, radix: 16));
+    } catch (_) {
+      return fallback;
+    }
   }
 
   /// Convertit une couleur en string Hex (ex: "#FF00FF")
