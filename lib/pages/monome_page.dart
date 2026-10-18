@@ -135,6 +135,8 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
                   frameDuration: const Duration(milliseconds: 500),
                   width: constraints.maxWidth,
                   height: constraints.maxHeight,
+                  cropLeft: 200.0,
+                  cropRight: 450.0,
                 );
               },
             )
@@ -229,10 +231,10 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
       onRefresh: _loadData,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Nombre de colonnes adapté à la largeur d'écran (minimum 3 pour compacité)
+          // Nombre de colonnes adapté à la largeur rognée des cartes
           int crossAxisCount = constraints.maxWidth > 600
-              ? 6
-              : (constraints.maxWidth > 380 ? 3 : 2);
+              ? 8
+              : (constraints.maxWidth > 380 ? 4 : 3);
 
           return GridView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -242,7 +244,7 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: 0,
               mainAxisSpacing: 0,
-              childAspectRatio: 1.0,
+              childAspectRatio: 950.0 / 1600.0, // Ratio adapté au rognage (1600 - 200 - 450 = 950)
             ),
             itemBuilder: (context, index) {
               return _buildConscritTile(_conscrits[index]);

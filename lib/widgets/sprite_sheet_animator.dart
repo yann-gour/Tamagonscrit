@@ -8,6 +8,8 @@ class SpriteSheetAnimator extends StatefulWidget {
   final Duration frameDuration;
   final double width;
   final double height;
+  final double cropLeft;
+  final double cropRight;
 
   const SpriteSheetAnimator({
     super.key,
@@ -16,6 +18,8 @@ class SpriteSheetAnimator extends StatefulWidget {
     this.frameDuration = const Duration(milliseconds: 500),
     required this.width,
     required this.height,
+    this.cropLeft = 0.0,
+    this.cropRight = 0.0,
   });
 
   @override
@@ -91,6 +95,8 @@ class _SpriteSheetAnimatorState extends State<SpriteSheetAnimator>
         spriteSheet: _spriteSheet!,
         frameCount: widget.frameCount,
         currentFrame: _currentFrame,
+        cropLeft: widget.cropLeft,
+        cropRight: widget.cropRight,
       ),
     );
   }
@@ -100,11 +106,15 @@ class SpritePainter extends CustomPainter {
   final ui.Image spriteSheet;
   final int frameCount;
   final int currentFrame;
+  final double cropLeft;
+  final double cropRight;
 
   SpritePainter({
     required this.spriteSheet,
     required this.frameCount,
     required this.currentFrame,
+    this.cropLeft = 0.0,
+    this.cropRight = 0.0,
   });
 
   @override
@@ -115,11 +125,14 @@ class SpritePainter extends CustomPainter {
     final frameWidth = spriteSheet.width / frameCount;
     final frameHeight = spriteSheet.height.toDouble();
 
-    // La portion de l'image source à dessiner
+    final srcLeft = (currentFrame * frameWidth) + cropLeft;
+    final srcWidth = (frameWidth - cropLeft - cropRight).clamp(1.0, frameWidth);
+
+    // La portion de l'image source à dessiner (rognée à gauche et à droite)
     final srcRect = Rect.fromLTWH(
-      currentFrame * frameWidth,
+      srcLeft,
       0,
-      frameWidth,
+      srcWidth,
       frameHeight,
     );
 
@@ -132,6 +145,8 @@ class SpritePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant SpritePainter oldDelegate) {
     return oldDelegate.currentFrame != currentFrame ||
-        oldDelegate.spriteSheet != spriteSheet;
+        oldDelegate.spriteSheet != spriteSheet ||
+        oldDelegate.cropLeft != cropLeft ||
+        oldDelegate.cropRight != cropRight;
   }
 }
