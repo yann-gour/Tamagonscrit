@@ -126,7 +126,7 @@ class ColorProcessor {
     required bool isBiaudeWhite,
   }) async {
     // 1. Lire tous les fichiers sur le Main Thread (car rootBundle n'est pas dispo dans un Isolate)
-    final assetsToProcess = ['conscrit.png', 'birse.png', 'ronque.png', 'monome.png'];
+    final assetsToProcess = ['conscrit.png', 'birse.png', 'ronque.png', 'monome.png', 'chouille.png', 'fins.png'];
     final Map<String, Uint8List> rawImages = {};
     
     for (String asset in assetsToProcess) {

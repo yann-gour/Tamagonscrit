@@ -123,26 +123,56 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
     final hairHex = conscrit['hair_color'] as String? ?? '#9C5A3C';
     final cacheKey = '${skinHex}_$hairHex';
     final imageBytes = _imageCache[cacheKey];
+    final String name = (conscrit['name'] as String?) ?? '';
 
     return Container(
       color: const Color(0xFFE0E0E0), // Fond gris clair pour chaque conscrit
-      child: imageBytes != null
-          ? LayoutBuilder(
-              builder: (context, constraints) {
-                return SpriteSheetAnimator(
-                  imageBytes: imageBytes,
-                  frameCount: 2,
-                  frameDuration: const Duration(milliseconds: 500),
-                  width: constraints.maxWidth,
-                  height: constraints.maxHeight,
-                  cropLeft: 200.0,
-                  cropRight: 450.0,
-                );
-              },
-            )
-          : const Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          imageBytes != null
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SpriteSheetAnimator(
+                      imageBytes: imageBytes,
+                      frameCount: 2,
+                      frameDuration: const Duration(milliseconds: 500),
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      cropLeft: 200.0,
+                      cropRight: 450.0,
+                    );
+                  },
+                )
+              : const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+          if (name.isNotEmpty)
+            Positioned(
+              bottom: 4,
+              left: 2,
+              right: 2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  name,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
+        ],
+      ),
     );
   }
 
@@ -195,14 +225,23 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
       );
     }
 
+    final double totalTrads = _conscrits.fold(0.0, (sum, conscrit) {
+      final t = conscrit['trads'];
+      return sum + (t is num ? t.toDouble() : 0.0);
+    });
+    final String formattedTrads = totalTrads % 1 == 0
+        ? totalTrads.toInt().toString()
+        : totalTrads.toStringAsFixed(1);
+
+    Widget content;
     if (_conscrits.isEmpty) {
-      return RefreshIndicator(
+      content = RefreshIndicator(
         onRefresh: _loadData,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(24.0),
           children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.1),
             Icon(Icons.groups_outlined, size: 90, color: Colors.grey.shade500),
             const SizedBox(height: 16),
             const Text(
@@ -225,33 +264,59 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
           ],
         ),
       );
+    } else {
+      content = RefreshIndicator(
+        onRefresh: _loadData,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Nombre de colonnes adapté à la largeur rognée des cartes
+            int crossAxisCount = constraints.maxWidth > 600
+                ? 8
+                : (constraints.maxWidth > 380 ? 4 : 3);
+
+            return GridView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: _conscrits.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 0,
+                mainAxisSpacing: 0,
+                childAspectRatio: 950.0 / 1600.0, // Ratio adapté au rognage (1600 - 200 - 450 = 950)
+              ),
+              itemBuilder: (context, index) {
+                return _buildConscritTile(_conscrits[index]);
+              },
+            );
+          },
+        ),
+      );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Nombre de colonnes adapté à la largeur rognée des cartes
-          int crossAxisCount = constraints.maxWidth > 600
-              ? 8
-              : (constraints.maxWidth > 380 ? 4 : 3);
-
-          return GridView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            itemCount: _conscrits.length,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 0,
-              mainAxisSpacing: 0,
-              childAspectRatio: 950.0 / 1600.0, // Ratio adapté au rognage (1600 - 200 - 450 = 950)
-            ),
-            itemBuilder: (context, index) {
-              return _buildConscritTile(_conscrits[index]);
-            },
-          );
-        },
-      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 16.0, bottom: 12.0),
+          child: Column(
+            children: [
+              const Text(
+                'Le Monôme',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Score Trad\'s total : $formattedTrads',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: content),
+      ],
     );
   }
 }

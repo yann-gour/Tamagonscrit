@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 import '../utils/color_processor.dart';
 import '../utils/color_palettes.dart';
+import '../utils/conscrit_names.dart';
 import '../widgets/sprite_sheet_animator.dart';
+import '../models/random_event.dart';
 import 'monome_page.dart';
 
 class ConscritPage extends StatefulWidget {
-  const ConscritPage({super.key});
+  final bool isVisible;
+  const ConscritPage({super.key, this.isVisible = true});
 
   @override
   State<ConscritPage> createState() => _ConscritPageState();
@@ -21,6 +26,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   bool get wantKeepAlive => true;
 
   bool _isLoading = true;
+  String _name = '';
   double _energie = 100.0;
   double _birse = 0.0;
   double _trads = 0.0;
@@ -38,6 +44,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   bool _hasSavedCompletion = false;
 
   Timer? _timer;
+  bool _isEventDialogOpen = false;
+  DateTime? _lastEventTime;
+  final Random _random = Random();
 
   @override
   void initState() {
@@ -65,8 +74,10 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
       if (data == null) {
         // Création de l'état par défaut si inexistant
+        _name = ConscritNames.getRandomName();
         await _supabase.from('conscrit_state').insert({
           'user_id': user.id,
+          'name': _name,
           'energie': 100.0,
           'birse': 0.0,
           'trads': 0.0,
@@ -81,6 +92,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         _startTimer();
       } else {
         setState(() {
+          _name = (data['name'] as String?)?.isNotEmpty == true
+              ? data['name'] as String
+              : ConscritNames.getRandomName();
           _energie = (data['energie'] as num).toDouble();
           _birse = (data['birse'] as num).toDouble();
           _trads = (data['trads'] as num).toDouble();
@@ -174,15 +188,137 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_activity != 'idle') {
-        setState(() {
+      if (!mounted) return;
+      setState(() {
+        if (_activity != 'idle') {
           _processTick(secondsMultiplier: 1.0);
-          if (_birse >= 100.0) {
-            _showCongratulations();
-          }
-        });
-      }
+        }
+        if (_birse >= 100.0) {
+          _showCongratulations();
+        } else {
+          _checkRandomEvent();
+        }
+      });
     });
+  }
+
+  bool get _isPageVisible {
+    if (!widget.isVisible) return false;
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+    return true;
+  }
+
+  void _checkRandomEvent() {
+    if (!_isPageVisible || _isEventDialogOpen || _birse >= 100.0 || _isLoading || _isProcessingImages) return;
+
+    if (_lastEventTime != null) {
+      final secondsSinceLastEvent = DateTime.now().difference(_lastEventTime!).inSeconds;
+      if (secondsSinceLastEvent < 10) return;
+    }
+
+    if (_random.nextInt(20) == 0) {
+      _lastEventTime = DateTime.now();
+      final event = allRandomEvents[_random.nextInt(allRandomEvents.length)];
+      _showEventDialog(event);
+    }
+  }
+
+  void _showEventDialog(RandomEvent event) {
+    _isEventDialogOpen = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(event.title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                event.getDescription(_name),
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              ...event.choices.map((choice) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      _handleEventChoiceSelected(event, choice);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: Text(
+                      choice.label,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleEventChoiceSelected(RandomEvent event, EventChoice choice) {
+    setState(() {
+      final effectContext = EventEffectContext(
+        addBirse: (delta) {
+          _birse = (_birse + delta).clamp(0.0, 100.0);
+        },
+        addTrads: (delta) {
+          _trads = (_trads + delta).clamp(0.0, 100.0);
+        },
+        setEnergie: (val) {
+          _energie = val.clamp(0.0, 100.0);
+        },
+        setActivity: (act, img) {
+          _activity = act;
+          _currentImage = img;
+          if (_startTime == null && act != 'idle') {
+            _startTime = DateTime.now().toUtc();
+          }
+        },
+      );
+
+      choice.applyEffect(effectContext);
+    });
+
+    _saveStateToSupabase();
+
+    final resultText = choice.getResultText(_name);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (resultDialogContext) {
+        return AlertDialog(
+          title: Text(event.title),
+          content: Text(resultText),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(resultDialogContext).pop();
+                _isEventDialogOpen = false;
+                _lastEventTime = DateTime.now();
+                if (_birse >= 100.0) {
+                  _showCongratulations();
+                }
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _processTick({required double secondsMultiplier}) {
@@ -202,6 +338,15 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       case 'monome':
         rateEnergie = -1.5;
         rateTrads = 1.5;
+        break;
+      case 'chouille':
+        rateEnergie = -2.0;
+        rateBirse = -0.75;
+        rateTrads = 0.75;
+        break;
+      case 'fins':
+        rateEnergie = 2.5;
+        rateTrads = 0.75;
         break;
       case 'idle':
       default:
@@ -230,8 +375,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       if (t < limitSeconds) limitSeconds = t;
     }
 
-    // 4. Limite de Trad's à 100
-    if (rateTrads > 0) {
+    // 4. Limite de Trad's à 100 (sauf pour chouille et fins qui ne s'arrêtent pas quand trad's est à 100)
+    if (rateTrads > 0 && _activity != 'chouille' && _activity != 'fins') {
       double t = (100.0 - _trads) / rateTrads;
       if (t < limitSeconds) limitSeconds = t;
     }
@@ -263,9 +408,15 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     
     // Mettre à jour l'image si on passe le cap des 50 birse (biaude blanche)
     // On vérifie le changement d'état pour ne pas le faire à chaque tick
-    final wasBelow50 = (_birse - (rateBirse * effectiveSeconds)) < 50.0;
-    if (wasBelow50 && _birse >= 50.0) {
+    final wasBelow50Birse = (_birse - (rateBirse * effectiveSeconds)) < 50.0;
+    if (wasBelow50Birse && _birse >= 50.0) {
       _show100JoursPopup();
+    }
+
+    // Popup Bapt's si on passe le cap des 50 trad's
+    final wasBelow50Trads = (_trads - (rateTrads * effectiveSeconds)) < 50.0;
+    if (wasBelow50Trads && _trads >= 50.0) {
+      _showBaptsPopup();
     }
   }
 
@@ -276,6 +427,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     try {
       await _supabase.from('conscrit_state').upsert({
         'user_id': user.id,
+        'name': _name,
         'energie': _energie,
         'birse': _birse,
         'trads': _trads,
@@ -350,6 +502,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     try {
       await _supabase.from('conscrits').insert({
         'user_id': user.id,
+        'name': _name,
         'trads': _trads,
         'rank': rank,
         'skin_color': ColorProcessor.colorToHex(_skinColor),
@@ -386,6 +539,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     }
 
     _saveCompletedConscrit(def, seconds);
+    final formattedDuration = _formatDurationWithSeconds(seconds);
 
     showDialog(
       context: context,
@@ -393,8 +547,44 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       builder: (context) {
         return AlertDialog(
           title: const Text('Félicitations !'),
-          content: Text(
-            'Bravo ! Ton conscrit a eu son Zcu en $seconds secondes et est $def !',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bravo ! Ton conscrit $_name a eu son Zcu en $formattedDuration et est $def !',
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final uri = Uri.parse('https://chat.whatsapp.com/EvUzW54vO1yDuEe53a8eT0');
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.open_in_new,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Il est maintenant prêt à rejoindre les JP !',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -447,9 +637,68 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     );
   }
 
+  void _showBaptsPopup() {
+    if (!mounted) return;
+
+    // Met le conscrit au repos
+    setState(() {
+      _activity = 'idle';
+      _currentImage = 'conscrit.png';
+    });
+    _timer?.cancel();
+    _saveStateToSupabase();
+
+    final textController = TextEditingController(text: _name);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("C'est le Bapt's !"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Ton conscrit est bapt'sé ! Il peut maintenant choisir sa bucque !",
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: textController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Bucque',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                final newName = textController.text.trim();
+                if (newName.isNotEmpty) {
+                  setState(() {
+                    _name = newName;
+                  });
+                  _saveStateToSupabase();
+                }
+                Navigator.of(context).pop();
+                _startTimer();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _resetState() {
     _hasSavedCompletion = false;
     setState(() {
+      _name = ConscritNames.getRandomName();
       _energie = 100.0;
       _birse = 0.0;
       _trads = 0.0;
@@ -481,11 +730,38 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         if (stat == 'energie') return -1.5;
         if (stat == 'trads') return 1.5;
         break;
+      case 'chouille':
+        if (stat == 'energie') return -2.0;
+        if (stat == 'birse') return -0.75;
+        if (stat == 'trads') return 0.75;
+        break;
+      case 'fins':
+        if (stat == 'energie') return 2.5;
+        if (stat == 'trads') return 0.75;
+        break;
       case 'idle':
       default:
         return 0.0;
     }
     return 0.0;
+  }
+
+  String _formatDurationWithSeconds(int totalSeconds) {
+    if (totalSeconds <= 0) return '0s';
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    final List<String> parts = [];
+    if (hours > 0) {
+      parts.add('$hours ${hours > 1 ? "plombes" : "plombe"}');
+    }
+    if (minutes > 0 || hours > 0) {
+      parts.add('$minutes ${minutes > 1 ? "broquilles" : "broquille"}');
+    }
+    parts.add('${seconds}s');
+
+    return parts.join(' ');
   }
 
   String _formatDuration(int totalSeconds) {
@@ -624,7 +900,18 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                 'Mon Conscrit',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 24),
+              if (_name.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _name,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
