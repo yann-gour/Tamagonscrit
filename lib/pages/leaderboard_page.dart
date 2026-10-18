@@ -328,7 +328,6 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     if (_gadzScores.isEmpty) {
       return const Center(
         child: Text(
-          'Aucun Gadz trouvé dans le classement.',
           style: TextStyle(fontSize: 16),
         ),
       );
@@ -385,7 +384,6 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Text(
-                      'Phy\'s',
                       style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -436,7 +434,6 @@ class _LeaderboardPageState extends State<LeaderboardPage>
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             subtitle: Text(
-              '${item.playerCount} ${item.playerCount > 1 ? "Gadz" : "Gadz"}',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
             trailing: Text(
@@ -479,7 +476,6 @@ class _LeaderboardPageState extends State<LeaderboardPage>
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             subtitle: Text(
-              '${item.playerCount} ${item.playerCount > 1 ? "Gadz" : "Gadz"}',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
             trailing: Text(
