@@ -70,6 +70,13 @@ final RandomEvent chouilleEvent = RandomEvent(
         context.setActivity('ronque', 'ronque.png');
       },
     ),
+    EventChoice(
+      label: 'Rester ronquer à Kgib\'s.',
+      getResultText: (name) => '$name est resté ronquer tranquillement à Kgib\'s !',
+      applyEffect: (context) {
+        context.setActivity('ronque', 'ronque.png');
+      },
+    ),
   ],
 );
 
@@ -101,6 +108,13 @@ final RandomEvent finsEvent = RandomEvent(
         context.addTrads(-20.0);
         context.setEnergie(100.0);
         context.setActivity('idle', 'conscrit.png');
+      },
+    ),
+    EventChoice(
+      label: 'Rester ronquer à Kgib\'s.',
+      getResultText: (name) => '$name est resté ronquer tranquillement à Kgib\'s !',
+      applyEffect: (context) {
+        context.setActivity('ronque', 'ronque.png');
       },
     ),
   ],

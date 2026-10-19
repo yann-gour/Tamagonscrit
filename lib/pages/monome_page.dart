@@ -23,6 +23,7 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
   bool _isLoading = true;
   String? _errorMessage;
   List<Map<String, dynamic>> _conscrits = [];
+  String? _playerFams;
   Uint8List? _rawMonomeZgBytes;
   final Map<String, Uint8List> _imageCache = {};
 
@@ -68,14 +69,37 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
         return;
       }
 
-      // 2. Charger les conscrits de l'utilisateur
+      // Récupérer la fam's du joueur depuis profiles
+      String? playerFams;
+      try {
+        final profileRes = await _supabase
+            .from('profiles')
+            .select('fams')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileRes != null) {
+          playerFams = profileRes['fams']?.toString();
+        }
+      } catch (e) {
+        debugPrint('Erreur chargement profil fams: $e');
+      }
+
+      // 2. Charger les conscrits de l'utilisateur (du plus vieux au plus récent)
       final response = await _supabase
           .from('conscrits')
           .select()
           .eq('user_id', user.id)
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: true);
 
       final List<Map<String, dynamic>> conscritsData = List<Map<String, dynamic>>.from(response);
+
+      // Assigner le numéro d'ancienneté (seniority) (1 = le plus vieux)
+      for (int i = 0; i < conscritsData.length; i++) {
+        conscritsData[i]['seniority'] = i + 1;
+      }
+
+      // Inverser pour afficher du plus récent au plus vieux
+      final List<Map<String, dynamic>> displayConscrits = conscritsData.reversed.toList();
 
       // 3. Pré-traiter les images de chaque conscrit
       if (_rawMonomeZgBytes != null) {
@@ -103,7 +127,8 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
 
       if (mounted) {
         setState(() {
-          _conscrits = conscritsData;
+          _playerFams = playerFams;
+          _conscrits = displayConscrits;
           _isLoading = false;
         });
       }
@@ -124,6 +149,19 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
     final cacheKey = '${skinHex}_$hairHex';
     final imageBytes = _imageCache[cacheKey];
     final String name = (conscrit['name'] as String?) ?? '';
+    final String conscritTabagns = (conscrit['tabagns'] as String?) ?? '';
+    final int seniority = conscrit['seniority'] as int? ?? 1;
+
+    List<String> parts = [];
+    if (name.isNotEmpty) parts.add(name);
+    if (_playerFams != null && _playerFams!.isNotEmpty) parts.add(_playerFams!);
+    if (conscritTabagns.isNotEmpty) {
+      parts.add('$conscritTabagns$seniority');
+    } else {
+      parts.add('$seniority');
+    }
+
+    final displayLabel = parts.join(' ');
 
     return Container(
       color: const Color(0xFFE0E0E0), // Fond gris clair pour chaque conscrit
@@ -159,7 +197,7 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  name,
+                  displayLabel,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

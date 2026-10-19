@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart'; // Pour accéder à themeNotifier
+import '../services/notification_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,10 +23,14 @@ class _ProfilePageState extends State<ProfilePage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _notificationsEnabled = true;
 
   @override
   void initState() {
     super.initState();
+    NotificationService().areNotificationsEnabled().then((val) {
+      if (mounted) setState(() => _notificationsEnabled = val);
+    });
     final user = supabase.auth.currentUser;
     _emailController.text = user?.email ?? '';
 
@@ -277,6 +282,27 @@ class _ProfilePageState extends State<ProfilePage> {
                         themeNotifier.value = newSelection.first;
                       },
                     );
+                  },
+                ),
+                const SizedBox(height: 32),
+                const Divider(),
+                const SizedBox(height: 16),
+                const Text(
+                  'Notifications',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Activer les notifications'),
+                  subtitle: const Text('Alertes sur l\'énergie, birse et trad\'s'),
+                  value: _notificationsEnabled,
+                  onChanged: (val) async {
+                    setState(() => _notificationsEnabled = val);
+                    await NotificationService().setNotificationsEnabled(val);
+                    if (val) {
+                      await NotificationService().requestPermissions();
+                    }
                   },
                 ),
                 const SizedBox(height: 48),

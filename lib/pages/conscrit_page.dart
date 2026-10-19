@@ -11,6 +11,8 @@ import '../widgets/sprite_sheet_animator.dart';
 import '../models/random_event.dart';
 import '../constants/stat_weights.dart';
 import 'monome_page.dart';
+import 'profile_page.dart';
+import '../services/notification_service.dart';
 
 class ConscritPage extends StatefulWidget {
   final bool isVisible;
@@ -31,6 +33,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   double _energie = 100.0;
   double _birse = 0.0;
   double _trads = 0.0;
+  String? _tabagns;
   DateTime? _startTime;
   String _currentImage = 'conscrit.png';
   String _activity = 'idle';
@@ -49,9 +52,20 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   DateTime? _lastEventTime;
   final Random _random = Random();
 
+  static const Map<String, String> tabagnsFullNames = {
+    'Ai': 'KIN (Ai)',
+    'An': 'Boquette (An)',
+    'Bo': 'Bordel\'s (Bo)',
+    'Ch': 'Chalon\'s (Ch)',
+    'Cl': 'Clun\'s (Cl)',
+    'Li': 'Birse (Li)',
+    'Me': 'Siber\'s (Me)',
+  };
+
   @override
   void initState() {
     super.initState();
+    NotificationService().requestPermissions();
     _fetchConscritState();
   }
 
@@ -60,6 +74,75 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     _timer?.cancel();
     _saveStateToSupabase(); // Sauvegarde finale en quittant
     super.dispose();
+  }
+
+  void _showTabagnsRequiredDialog() {
+    if (!mounted) return;
+    _timer?.cancel();
+
+    String? selectedTabagns = ProfilePage.tabagnsList.first;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("C'est la rencale !"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '$_name doit choisir son tabagn\'s :',
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedTabagns,
+                    decoration: const InputDecoration(
+                      labelText: 'Tabagn\'s',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ProfilePage.tabagnsList.map((t) {
+                      return DropdownMenuItem<String>(
+                        value: t,
+                        child: Text(tabagnsFullNames[t] ?? t),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedTabagns = val;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    if (selectedTabagns != null) {
+                      setState(() {
+                        _tabagns = selectedTabagns;
+                      });
+                      _saveStateToSupabase();
+                      Navigator.of(dialogContext).pop();
+                      if (_birse >= 100.0) {
+                        _showCongratulations();
+                      } else {
+                        _startTimer();
+                      }
+                    }
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _fetchConscritState() async {
@@ -76,6 +159,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       if (data == null) {
         // Création de l'état par défaut si inexistant
         _name = ConscritNames.getRandomName();
+        _tabagns = null;
         await _supabase.from('conscrit_state').insert({
           'user_id': user.id,
           'name': _name,
@@ -89,8 +173,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           'hair_color': ColorProcessor.colorToHex(_hairColor),
           'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
           'pants_color': ColorProcessor.colorToHex(_pantsColor),
+          'tabagns': null,
         });
-        _startTimer();
+        _showTabagnsRequiredDialog();
       } else {
         setState(() {
           _name = (data['name'] as String?)?.isNotEmpty == true
@@ -99,6 +184,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           _energie = (data['energie'] as num).toDouble();
           _birse = (data['birse'] as num).toDouble();
           _trads = (data['trads'] as num).toDouble();
+          _tabagns = data['tabagns'] as String?;
           
           // Compatibilité : si c'est encore un gif en DB, on force le png
           String gifFromDb = data['current_gif'] as String;
@@ -123,21 +209,25 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           }
         });
 
-        // Calcul du temps passé hors-ligne
-        if (data['last_updated'] != null) {
-          final lastUpdated = DateTime.parse(data['last_updated']);
-          final now = DateTime.now().toUtc();
-          final differenceInSeconds = now.difference(lastUpdated).inSeconds;
-
-          if (differenceInSeconds > 0 && _activity != 'idle') {
-            _applyOfflineProgress(differenceInSeconds);
-          }
-        }
-
-        if (_birse >= 100.0) {
-          _showCongratulations();
+        if (_tabagns == null || _tabagns!.isEmpty) {
+          _showTabagnsRequiredDialog();
         } else {
-          _startTimer();
+          // Calcul du temps passé hors-ligne
+          if (data['last_updated'] != null) {
+            final lastUpdated = DateTime.parse(data['last_updated']);
+            final now = DateTime.now().toUtc();
+            final differenceInSeconds = now.difference(lastUpdated).inSeconds;
+
+            if (differenceInSeconds > 0 && _activity != 'idle') {
+              _applyOfflineProgress(differenceInSeconds);
+            }
+          }
+
+          if (_birse >= 100.0) {
+            _showCongratulations();
+          } else {
+            _startTimer();
+          }
         }
       }
       
@@ -218,7 +308,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       if (secondsSinceLastEvent < 10) return;
     }
 
-    if (_random.nextInt(20) == 0) {
+    if (_random.nextInt(50) == 0) {
       _lastEventTime = DateTime.now();
       final event = allRandomEvents[_random.nextInt(allRandomEvents.length)];
       _showEventDialog(event);
@@ -334,27 +424,18 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     double limitSeconds =
         double.infinity; // Utilisation de l'infini au lieu de null
 
-    // 1. Limite d'énergie à 0
-    if (rateEnergie < 0) {
-      double t = _energie / (-rateEnergie);
-      if (t < limitSeconds) limitSeconds = t;
-    }
-    // 2. Limite d'énergie à 100
-    else if (rateEnergie > 0) {
-      double t = (100.0 - _energie) / rateEnergie;
-      if (t < limitSeconds) limitSeconds = t;
-    }
-
-    // 3. Limite de Birse à 100
-    if (rateBirse > 0) {
-      double t = (100.0 - _birse) / rateBirse;
-      if (t < limitSeconds) limitSeconds = t;
-    }
-
-    // 4. Limite de Trad's à 100 (sauf pour chouille et fins qui ne s'arrêtent pas quand trad's est à 100)
-    if (rateTrads > 0 && _activity != 'chouille' && _activity != 'fins') {
-      double t = (100.0 - _trads) / rateTrads;
-      if (t < limitSeconds) limitSeconds = t;
+    if (_activity == 'ronque') {
+      // Ronque s'arrête quand l'énergie atteint 100
+      if (rateEnergie > 0) {
+        double t = (100.0 - _energie) / rateEnergie;
+        if (t < limitSeconds) limitSeconds = t;
+      }
+    } else {
+      // Les autres statuts (birse, monome, chouille, fins, etc.) s'arrêtent uniquement si l'énergie atteint 0
+      if (rateEnergie < 0) {
+        double t = _energie / (-rateEnergie);
+        if (t < limitSeconds) limitSeconds = t;
+      }
     }
 
     // Si une des limites est atteinte dans le temps imparti
@@ -396,6 +477,16 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     }
   }
 
+  void _scheduleNotifications() {
+    NotificationService().scheduleMilestones(
+      energie: _energie,
+      birse: _birse,
+      trads: _trads,
+      activity: _activity,
+      name: _name,
+    );
+  }
+
   Future<void> _saveStateToSupabase() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
@@ -414,8 +505,10 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'hair_color': ColorProcessor.colorToHex(_hairColor),
         'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
         'pants_color': ColorProcessor.colorToHex(_pantsColor),
+        'tabagns': _tabagns,
         // last_updated est géré automatiquement par le trigger Supabase ou default now() si update classique
       });
+      _scheduleNotifications();
     } catch (e) {
       debugPrint('Erreur de sauvegarde: $e');
     }
@@ -486,6 +579,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
         'pants_color': ColorProcessor.colorToHex(_pantsColor),
         'duration_seconds': seconds,
+        'tabagns': _tabagns,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
       debugPrint('Conscrit terminé enregistré avec succès dans Supabase.');
@@ -675,6 +769,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     _hasSavedCompletion = false;
     setState(() {
       _name = ConscritNames.getRandomName();
+      _tabagns = null;
       _energie = 100.0;
       _birse = 0.0;
       _trads = 0.0;
@@ -689,31 +784,31 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     // On génère les 4 nouvelles images en arrière-plan
     _preloadAllImages();
     _saveStateToSupabase();
-    _startTimer();
+    _showTabagnsRequiredDialog();
   }
 
   double _getStatRate(String stat) {
     switch (_activity) {
       case 'birse':
         if (stat == 'energie') return -1.0 * StatWeights.weightEnergie;
-        if (stat == 'birse') return 1.5 * StatWeights.weightBirse;
-        if (stat == 'trads') return -1.5 * StatWeights.weightTrads;
+        if (stat == 'birse') return 0.5 * StatWeights.weightBirse;
+        if (stat == 'trads') return -0.2 * StatWeights.weightTrads;
         break;
       case 'ronque':
-        if (stat == 'energie') return 2.5 * StatWeights.weightEnergie;
+        if (stat == 'energie') return 1.0 * StatWeights.weightEnergie;
         break;
       case 'monome':
-        if (stat == 'energie') return -1.5 * StatWeights.weightEnergie;
-        if (stat == 'trads') return 1.5 * StatWeights.weightTrads;
+        if (stat == 'energie') return -1.0 * StatWeights.weightEnergie;
+        if (stat == 'trads') return 0.5 * StatWeights.weightTrads;
         break;
       case 'chouille':
         if (stat == 'energie') return -2.0 * StatWeights.weightEnergie;
-        if (stat == 'birse') return -0.75 * StatWeights.weightBirse;
-        if (stat == 'trads') return 0.75 * StatWeights.weightTrads;
+        if (stat == 'birse') return -0.2 * StatWeights.weightBirse;
+        if (stat == 'trads') return 0.4 * StatWeights.weightTrads;
         break;
       case 'fins':
-        if (stat == 'energie') return 2.5 * StatWeights.weightEnergie;
-        if (stat == 'trads') return 0.75 * StatWeights.weightTrads;
+        if (stat == 'energie') return 1.0 * StatWeights.weightEnergie;
+        if (stat == 'trads') return 0.4 * StatWeights.weightTrads;
         break;
       case 'idle':
       default:
@@ -761,33 +856,43 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     return '${hours}h ${remainingMinutes}m';
   }
 
-  Widget _buildEnergyRemainingTime() {
-    final rate = _getStatRate('energie');
+  Widget _buildStatRemainingTime(
+    String statKey,
+    double value, {
+    double fontSize = 12,
+    bool includeLeadingSpace = false,
+  }) {
+    final rate = _getStatRate(statKey);
     if (rate == 0) return const SizedBox.shrink();
 
     int secondsRemaining = 0;
     Color textColor = Colors.green;
 
     if (rate < 0) {
-      if (_energie <= 0) return const SizedBox.shrink();
-      secondsRemaining = (_energie / (-rate)).ceil();
+      if (value <= 0) return const SizedBox.shrink();
+      secondsRemaining = (value / (-rate)).ceil();
       textColor = Colors.red;
     } else if (rate > 0) {
-      if (_energie >= 100.0) return const SizedBox.shrink();
-      secondsRemaining = ((100.0 - _energie) / rate).ceil();
+      if (value >= 100.0) return const SizedBox.shrink();
+      secondsRemaining = ((100.0 - value) / rate).ceil();
       textColor = Colors.green;
     }
 
     final formatted = _formatDuration(secondsRemaining);
+    final text = includeLeadingSpace ? ' ($formatted)' : formatted;
 
     return Text(
-      ' ($formatted)',
+      text,
       style: TextStyle(
         fontWeight: FontWeight.bold,
-        fontSize: 16,
+        fontSize: fontSize,
         color: textColor,
       ),
     );
+  }
+
+  Widget _buildEnergyRemainingTime() {
+    return _buildStatRemainingTime('energie', _energie, fontSize: 16, includeLeadingSpace: true);
   }
 
   Widget _buildTrendIndicator(String stat, {double iconSize = 20}) {
@@ -837,19 +942,26 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         const SizedBox(height: 8),
         Text(bottomLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Row(
+        Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: color,
-                fontSize: 16,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                _buildTrendIndicator(statKey, iconSize: 18),
+              ],
             ),
-            const SizedBox(width: 2),
-            _buildTrendIndicator(statKey, iconSize: 18),
+            const SizedBox(height: 2),
+            _buildStatRemainingTime(statKey, value),
           ],
         ),
       ],
@@ -948,7 +1060,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                     children: [
                       // Image de fond
                       Image.asset(
-                        'assets/fond.png',
+                        (_tabagns != null && _tabagns!.isNotEmpty)
+                            ? 'assets/fond_${_tabagns!.toLowerCase()}.png'
+                            : 'assets/fond.png',
                         fit: BoxFit.cover, // Remplit complètement le cadre
                         filterQuality: FilterQuality.none,
                       ),

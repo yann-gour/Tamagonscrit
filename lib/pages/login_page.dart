@@ -100,6 +100,25 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _signInAnonymously() async {
+    setState(() => _isLoading = true);
+    try {
+      await supabase.auth.signInAnonymously();
+    } on AuthException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erreur inattendue')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -193,6 +212,14 @@ class _LoginPageState extends State<LoginPage> {
                       TextButton(
                         onPressed: _signUp,
                         child: const Text('Créer un compte'),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton(
+                        onPressed: _isLoading ? null : _signInAnonymously,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Connexion anonyme (sans e-mail)'),
                       ),
                     ],
                   ),
