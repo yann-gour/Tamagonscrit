@@ -627,7 +627,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
               const SizedBox(height: 16),
               InkWell(
                 onTap: () async {
-                  final uri = Uri.parse('https://chat.whatsapp.com/EvUzW54vO1yDuEe53a8eT0');
+                  final uri = Uri.parse('https://chat.whatsapp.com/CV3OEQGGt4XJDBJcripnqq');
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   }
