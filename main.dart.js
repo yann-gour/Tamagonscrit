@@ -104147,12 +104147,12 @@ s.j6()
 s.Ko()},
 w4(a){switch(this.as){case"birse":if(a==="energie")return-0.027777777777777776
 if(a==="birse")return 0.013888888888888888
-if(a==="trads")return-0.005555555555555556
+if(a==="trads")return-0.002777777777777778
 break
 case"ronque":if(a==="energie")return 0.027777777777777776
 break
 case"monome":if(a==="energie")return-0.027777777777777776
-if(a==="trads")return 0.013888888888888888
+if(a==="trads")return 0.01944444444444444
 break
 case"chouille":if(a==="energie")return-0.05555555555555555
 if(a==="birse")return-0.005555555555555556
