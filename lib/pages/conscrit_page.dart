@@ -792,14 +792,14 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       case 'birse':
         if (stat == 'energie') return -1.0 * StatWeights.weightEnergie;
         if (stat == 'birse') return 0.5 * StatWeights.weightBirse;
-        if (stat == 'trads') return -0.2 * StatWeights.weightTrads;
+        if (stat == 'trads') return -0.1 * StatWeights.weightTrads;
         break;
       case 'ronque':
         if (stat == 'energie') return 1.0 * StatWeights.weightEnergie;
         break;
       case 'monome':
         if (stat == 'energie') return -1.0 * StatWeights.weightEnergie;
-        if (stat == 'trads') return 0.5 * StatWeights.weightTrads;
+        if (stat == 'trads') return 0.7 * StatWeights.weightTrads;
         break;
       case 'chouille':
         if (stat == 'energie') return -2.0 * StatWeights.weightEnergie;
