@@ -104371,7 +104371,7 @@ $S:53}
 A.atH.prototype={
 $0(){var s=0,r=A.D(t.H),q
 var $async$$0=A.E(function(a,b){if(a===1)return A.A(b,r)
-for(;;)switch(s){case 0:q=A.dE("https://chat.whatsapp.com/EvUzW54vO1yDuEe53a8eT0",0,null)
+for(;;)switch(s){case 0:q=A.dE("https://chat.whatsapp.com/CV3OEQGGt4XJDBJcripnqq",0,null)
 s=4
 return A.q(A.aJk(q),$async$$0)
 case 4:s=b?2:3
