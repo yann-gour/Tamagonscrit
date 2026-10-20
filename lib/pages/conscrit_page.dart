@@ -30,11 +30,11 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
   bool _isLoading = true;
   String _name = '';
-  final TextEditingController _nameController = TextEditingController();
-  final FocusNode _nameFocusNode = FocusNode();
   double _energie = 100.0;
   double _birse = 0.0;
   double _trads = 0.0;
+  bool _hasShown100Jours = false;
+  bool _hasShownBapts = false;
   String? _tabagns;
   DateTime? _startTime;
   String _currentImage = 'conscrit.png';
@@ -68,35 +68,13 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   void initState() {
     super.initState();
     NotificationService().requestPermissions();
-    _nameFocusNode.addListener(_onNameFocusChange);
     _fetchConscritState();
-  }
-
-  void _onNameFocusChange() {
-    if (!_nameFocusNode.hasFocus) {
-      _saveEditedName();
-    }
-  }
-
-  void _saveEditedName() {
-    final newName = _nameController.text.trim();
-    if (newName.isNotEmpty && newName != _name) {
-      setState(() {
-        _name = newName;
-      });
-      _saveStateToSupabase();
-    } else if (newName.isEmpty) {
-      _nameController.text = _name;
-    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _saveStateToSupabase(); // Sauvegarde finale en quittant
-    _nameFocusNode.removeListener(_onNameFocusChange);
-    _nameFocusNode.dispose();
-    _nameController.dispose();
     super.dispose();
   }
 
@@ -183,8 +161,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       if (data == null) {
         // Création de l'état par défaut si inexistant
         _name = ConscritNames.getRandomName();
-        _nameController.text = _name;
         _tabagns = null;
+        _hasShown100Jours = false;
+        _hasShownBapts = false;
         await _supabase.from('conscrit_state').insert({
           'user_id': user.id,
           'name': _name,
@@ -199,6 +178,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
           'pants_color': ColorProcessor.colorToHex(_pantsColor),
           'tabagns': null,
+          'has_shown_100_jours': false,
+          'has_shown_bapts': false,
         });
         _showTabagnsRequiredDialog();
       } else {
@@ -206,11 +187,12 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           _name = (data['name'] as String?)?.isNotEmpty == true
               ? data['name'] as String
               : ConscritNames.getRandomName();
-          _nameController.text = _name;
           _energie = (data['energie'] as num).toDouble();
           _birse = (data['birse'] as num).toDouble();
           _trads = (data['trads'] as num).toDouble();
           _tabagns = data['tabagns'] as String?;
+          _hasShown100Jours = data['has_shown_100_jours'] as bool? ?? false;
+          _hasShownBapts = data['has_shown_bapts'] as bool? ?? false;
           
           // Compatibilité : si c'est encore un gif en DB, on force le png
           String gifFromDb = data['current_gif'] as String;
@@ -489,16 +471,13 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       _saveStateToSupabase();
     }
     
-    // Mettre à jour l'image si on passe le cap des 50 birse (biaude blanche)
-    // On vérifie le changement d'état pour ne pas le faire à chaque tick
-    final wasBelow50Birse = (_birse - (rateBirse * effectiveSeconds)) < 50.0;
-    if (wasBelow50Birse && _birse >= 50.0) {
+    // Popup 100 jours si Birse >= 50 et pas encore affiché
+    if (_birse >= 50.0 && !_hasShown100Jours) {
       _show100JoursPopup();
     }
 
-    // Popup Bapt's si on passe le cap des 50 trad's
-    final wasBelow50Trads = (_trads - (rateTrads * effectiveSeconds)) < 50.0;
-    if (wasBelow50Trads && _trads >= 50.0) {
+    // Popup Bapt's si Trad's >= 50 et pas encore affiché
+    if (_trads >= 50.0 && !_hasShownBapts) {
       _showBaptsPopup();
     }
   }
@@ -532,6 +511,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
         'pants_color': ColorProcessor.colorToHex(_pantsColor),
         'tabagns': _tabagns,
+        'has_shown_100_jours': _hasShown100Jours,
+        'has_shown_bapts': _hasShownBapts,
         // last_updated est géré automatiquement par le trigger Supabase ou default now() si update classique
       });
       _scheduleNotifications();
@@ -701,6 +682,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
     // Met le conscrit au repos (stoppe la jauge de trad's pour éviter des bugs)
     setState(() {
+      _hasShown100Jours = true;
       _activity = 'idle';
       _currentImage = 'conscrit.png';
     });
@@ -738,6 +720,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
     // Met le conscrit au repos
     setState(() {
+      _hasShownBapts = true;
       _activity = 'idle';
       _currentImage = 'conscrit.png';
     });
@@ -777,7 +760,6 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                 if (newName.isNotEmpty) {
                   setState(() {
                     _name = newName;
-                    _nameController.text = newName;
                   });
                   _saveStateToSupabase();
                 }
@@ -795,8 +777,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   void _resetState() {
     _hasSavedCompletion = false;
     setState(() {
+      _hasShown100Jours = false;
+      _hasShownBapts = false;
       _name = ConscritNames.getRandomName();
-      _nameController.text = _name;
       _tabagns = null;
       _energie = 100.0;
       _birse = 0.0;
@@ -923,59 +906,6 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     return _buildStatRemainingTime('energie', _energie, fontSize: 16, includeLeadingSpace: true);
   }
 
-  Widget _buildEditableNameField() {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 240),
-      child: TextField(
-        controller: _nameController,
-        focusNode: _nameFocusNode,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Bucque',
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _nameFocusNode.hasFocus ? Icons.check : Icons.edit_outlined,
-              size: 18,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            onPressed: () {
-              if (_nameFocusNode.hasFocus) {
-                _nameFocusNode.unfocus();
-              } else {
-                _nameFocusNode.requestFocus();
-              }
-            },
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary,
-              width: 1.5,
-            ),
-          ),
-        ),
-        onSubmitted: (_) {
-          _nameFocusNode.unfocus();
-        },
-      ),
-    );
-  }
-
   Widget _buildTrendIndicator(String stat, {double iconSize = 20}) {
     final rate = _getStatRate(stat);
     if (rate > 0) {
@@ -1071,17 +1001,14 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
               ),
               if (_name.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                if (_trads >= 50.0)
-                  _buildEditableNameField()
-                else
-                  Text(
-                    _name,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                Text(
+                  _name,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
+                ),
               ],
               const SizedBox(height: 16),
               Row(

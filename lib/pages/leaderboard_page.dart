@@ -157,19 +157,12 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
       // Dictionnaire userId -> total score
       final Map<String, double> userScoresMap = {};
-      // Dictionnaire userId -> nom de secours (fallback bucque)
-      final Map<String, String> userFallbackBucque = {};
 
       for (var c in conscritsData) {
         final userId = c['user_id']?.toString();
         if (userId == null) continue;
         final trads = (c['trads'] as num?)?.toDouble() ?? 0.0;
         userScoresMap[userId] = (userScoresMap[userId] ?? 0.0) + trads;
-
-        final name = c['name']?.toString().trim();
-        if (name != null && name.isNotEmpty) {
-          userFallbackBucque[userId] = name;
-        }
       }
 
       for (var cs in conscritStatesData) {
@@ -177,11 +170,6 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         if (userId == null) continue;
         final trads = (cs['trads'] as num?)?.toDouble() ?? 0.0;
         userScoresMap[userId] = (userScoresMap[userId] ?? 0.0) + trads;
-
-        final name = cs['name']?.toString().trim();
-        if (name != null && name.isNotEmpty && !userFallbackBucque.containsKey(userId)) {
-          userFallbackBucque[userId] = name;
-        }
       }
 
       // Ensemble de tous les identifiants d'utilisateurs connus
@@ -196,9 +184,9 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         final profile = profilesMap[userId];
         final score = userScoresMap[userId] ?? 0.0;
 
-        String bucque = profile?['bucque']?.toString().trim() ?? '';
+        final bucque = profile?['bucque']?.toString().trim() ?? '';
         if (bucque.isEmpty) {
-          bucque = userFallbackBucque[userId] ?? 'Gadz\'art';
+          continue;
         }
 
         final fams = profile?['fams']?.toString().trim();
