@@ -30,6 +30,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
   bool _isLoading = true;
   String _name = '';
+  final TextEditingController _nameController = TextEditingController();
+  final FocusNode _nameFocusNode = FocusNode();
   double _energie = 100.0;
   double _birse = 0.0;
   double _trads = 0.0;
@@ -66,13 +68,35 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   void initState() {
     super.initState();
     NotificationService().requestPermissions();
+    _nameFocusNode.addListener(_onNameFocusChange);
     _fetchConscritState();
+  }
+
+  void _onNameFocusChange() {
+    if (!_nameFocusNode.hasFocus) {
+      _saveEditedName();
+    }
+  }
+
+  void _saveEditedName() {
+    final newName = _nameController.text.trim();
+    if (newName.isNotEmpty && newName != _name) {
+      setState(() {
+        _name = newName;
+      });
+      _saveStateToSupabase();
+    } else if (newName.isEmpty) {
+      _nameController.text = _name;
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _saveStateToSupabase(); // Sauvegarde finale en quittant
+    _nameFocusNode.removeListener(_onNameFocusChange);
+    _nameFocusNode.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -159,6 +183,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       if (data == null) {
         // Création de l'état par défaut si inexistant
         _name = ConscritNames.getRandomName();
+        _nameController.text = _name;
         _tabagns = null;
         await _supabase.from('conscrit_state').insert({
           'user_id': user.id,
@@ -181,6 +206,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           _name = (data['name'] as String?)?.isNotEmpty == true
               ? data['name'] as String
               : ConscritNames.getRandomName();
+          _nameController.text = _name;
           _energie = (data['energie'] as num).toDouble();
           _birse = (data['birse'] as num).toDouble();
           _trads = (data['trads'] as num).toDouble();
@@ -751,6 +777,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                 if (newName.isNotEmpty) {
                   setState(() {
                     _name = newName;
+                    _nameController.text = newName;
                   });
                   _saveStateToSupabase();
                 }
@@ -769,6 +796,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     _hasSavedCompletion = false;
     setState(() {
       _name = ConscritNames.getRandomName();
+      _nameController.text = _name;
       _tabagns = null;
       _energie = 100.0;
       _birse = 0.0;
@@ -895,6 +923,59 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     return _buildStatRemainingTime('energie', _energie, fontSize: 16, includeLeadingSpace: true);
   }
 
+  Widget _buildEditableNameField() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 240),
+      child: TextField(
+        controller: _nameController,
+        focusNode: _nameFocusNode,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Bucque',
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _nameFocusNode.hasFocus ? Icons.check : Icons.edit_outlined,
+              size: 18,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            onPressed: () {
+              if (_nameFocusNode.hasFocus) {
+                _nameFocusNode.unfocus();
+              } else {
+                _nameFocusNode.requestFocus();
+              }
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 1.5,
+            ),
+          ),
+        ),
+        onSubmitted: (_) {
+          _nameFocusNode.unfocus();
+        },
+      ),
+    );
+  }
+
   Widget _buildTrendIndicator(String stat, {double iconSize = 20}) {
     final rate = _getStatRate(stat);
     if (rate > 0) {
@@ -990,14 +1071,17 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
               ),
               if (_name.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text(
-                  _name,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
+                if (_trads >= 50.0)
+                  _buildEditableNameField()
+                else
+                  Text(
+                    _name,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
-                ),
               ],
               const SizedBox(height: 16),
               Row(
