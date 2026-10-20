@@ -305,7 +305,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
     if (_lastEventTime != null) {
       final secondsSinceLastEvent = DateTime.now().difference(_lastEventTime!).inSeconds;
-      if (secondsSinceLastEvent < 10) return;
+      if (secondsSinceLastEvent < 60) return;
     }
 
     if (_random.nextInt(50) == 0) {
