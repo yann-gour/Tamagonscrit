@@ -103985,7 +103985,7 @@ if(!q.gam9()||q.dx||q.w>=100||q.e||q.cx)return
 if(q.dy!=null){s=Date.now()
 r=q.dy
 r.toString
-if(B.e.bs(new A.c8(s,0,!1).eD(r).a,1e6)<10)return}s=q.fr
+if(B.e.bs(new A.c8(s,0,!1).eD(r).a,1e6)<60)return}s=q.fr
 if(s.i9(50)===0){q.dy=new A.c8(Date.now(),0,!1)
 q.ar7($.aVp()[s.i9(2)])}},
 ar7(a){var s
