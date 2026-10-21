@@ -13,6 +13,7 @@ import '../constants/stat_weights.dart';
 import 'monome_page.dart';
 import 'profile_page.dart';
 import '../services/notification_service.dart';
+import '../services/achievement_service.dart';
 
 class ConscritPage extends StatefulWidget {
   final bool isVisible;
@@ -147,6 +148,104 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     );
   }
 
+  void _checkAchievements() {
+    if (!mounted) return;
+    if (_birse >= 100.0) {
+      AchievementService().unlockAndShowPopup(context, 'a_l_ecole');
+    }
+    if (_trads >= 100.0) {
+      AchievementService().unlockAndShowPopup(context, 'aux_trads');
+    }
+    if (_startTime != null && _birse < 100.0) {
+      final elapsedSeconds = DateTime.now().toUtc().difference(_startTime!).inSeconds;
+      if (elapsedSeconds >= 86400) {
+        AchievementService().unlockAndShowPopup(context, 'aux_sacques');
+      }
+      if (elapsedSeconds >= 7 * 86400) {
+        AchievementService().unlockAndShowPopup(context, 'aux_lourdes');
+      }
+    }
+    if (_activity == 'chouille') {
+      AchievementService().unlockAndShowPopup(context, 'a_bacchus');
+    }
+  }
+
+  Future<void> _checkMonomeCountAchievement() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+      final response = await _supabase
+          .from('conscrits')
+          .select('id')
+          .eq('user_id', user.id);
+      final count = (response as List).length;
+      if (count >= 100 && mounted) {
+        AchievementService().unlockAndShowPopup(context, 'a_la_fraterns');
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification du nombre de conscrits pour le succès: $e');
+    }
+  }
+
+  Future<void> _checkTabagnsAchievements() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await _supabase
+          .from('conscrits')
+          .select('tabagns')
+          .eq('user_id', user.id);
+
+      final List<dynamic> list = response as List<dynamic>;
+      final Set<String> userTabagns = {};
+      for (var row in list) {
+        final t = row['tabagns']?.toString();
+        if (t != null && t.isNotEmpty) {
+          userTabagns.add(t);
+        }
+      }
+
+      final tabagnsMap = {
+        'Ch': 'monome_ch',
+        'An': 'monome_an',
+        'Ai': 'monome_ai',
+        'Cl': 'monome_cl',
+        'Li': 'monome_li',
+        'Bo': 'monome_bo',
+        'Me': 'monome_me',
+      };
+
+      for (var entry in tabagnsMap.entries) {
+        if (userTabagns.contains(entry.key) && mounted) {
+          await AchievementService().unlockAndShowPopup(context, entry.value);
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification du succès tabagns: $e');
+    }
+  }
+
+  Future<void> _checkCrapaudAchievement() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+      final response = await _supabase
+          .from('conscrits')
+          .select('trads')
+          .eq('user_id', user.id);
+      for (var row in (response as List)) {
+        final trads = (row['trads'] as num?)?.toDouble() ?? 0.0;
+        if (trads <= 0.0 && mounted) {
+          await AchievementService().unlockAndShowPopup(context, 'crapaud');
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification du succès Crapaud: $e');
+    }
+  }
+
   Future<void> _fetchConscritState() async {
     try {
       final user = _supabase.auth.currentUser;
@@ -164,6 +263,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         _tabagns = null;
         _hasShown100Jours = false;
         _hasShownBapts = false;
+        _startTime = DateTime.now().toUtc();
         await _supabase.from('conscrit_state').insert({
           'user_id': user.id,
           'name': _name,
@@ -172,7 +272,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           'trads': 0.0,
           'current_gif': 'conscrit.png',
           'activity': 'idle',
-          'start_time': null,
+          'start_time': _startTime?.toIso8601String(),
           'skin_color': ColorProcessor.colorToHex(_skinColor),
           'hair_color': ColorProcessor.colorToHex(_hairColor),
           'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
@@ -217,6 +317,11 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           }
         });
 
+        _checkAchievements();
+        _checkMonomeCountAchievement();
+        _checkTabagnsAchievements();
+        _checkCrapaudAchievement();
+
         if (_tabagns == null || _tabagns!.isEmpty) {
           _showTabagnsRequiredDialog();
         } else {
@@ -225,6 +330,10 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
             final lastUpdated = DateTime.parse(data['last_updated']);
             final now = DateTime.now().toUtc();
             final differenceInSeconds = now.difference(lastUpdated).inSeconds;
+
+            if (differenceInSeconds >= 30 * 86400 && mounted) {
+              AchievementService().unlockAndShowPopup(context, 'aux_disparus');
+            }
 
             if (differenceInSeconds > 0 && _activity != 'idle') {
               _applyOfflineProgress(differenceInSeconds);
@@ -389,6 +498,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       );
 
       choice.applyEffect(effectContext);
+      _checkAchievements();
     });
 
     _saveStateToSupabase();
@@ -455,6 +565,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     _energie = (_energie + (rateEnergie * effectiveSeconds)).clamp(0.0, 100.0);
     _birse = (_birse + (rateBirse * effectiveSeconds)).clamp(0.0, 100.0);
     _trads = (_trads + (rateTrads * effectiveSeconds)).clamp(0.0, 100.0);
+
+    _checkAchievements();
 
     // Vérifier si Birse atteint 100
     if (_birse >= 100.0) {
@@ -566,6 +678,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     // Plus besoin de recalculer l'image, elle est déjà dans _imageCache !
     // On sauvegarde l'état en base de données dès qu'on change d'activité
     _saveStateToSupabase();
+    _checkAchievements();
   }
 
   Future<void> _saveCompletedConscrit(String rank, int seconds) async {
@@ -592,6 +705,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       debugPrint('Conscrit terminé enregistré avec succès dans Supabase.');
       // Rafraîchir immédiatement le monôme
       monomeRefreshNotifier.value++;
+      _checkMonomeCountAchievement();
+      _checkTabagnsAchievements();
+      _checkCrapaudAchievement();
     } catch (e) {
       debugPrint('Erreur lors de la sauvegarde du conscrit terminé: $e');
     }
@@ -599,6 +715,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
   void _showCongratulations() {
     if (!mounted) return;
+    _checkAchievements();
 
     final int seconds = _startTime != null
         ? DateTime.now().toUtc().difference(_startTime!).inSeconds
@@ -786,7 +903,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       _trads = 0.0;
       _activity = 'idle';
       _currentImage = 'conscrit.png';
-      _startTime = null;
+      _startTime = DateTime.now().toUtc();
       _skinColor = ColorPalettes.getRandomSkinColor();
       _hairColor = ColorPalettes.getRandomHairColor();
       _tshirtColor = ColorPalettes.getRandomClothesColor();

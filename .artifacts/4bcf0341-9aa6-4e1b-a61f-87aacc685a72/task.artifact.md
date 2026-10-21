@@ -1,0 +1,3 @@
+- [ ] Design Web Notification implementation using conditional compilation / `dart:html` for Flutter Web
+- [ ] Update `NotificationService` to handle Web notifications via `Future.delayed` and browser `Notification` API
+- [ ] Test build with `flutter analyze` and verify web notification logic

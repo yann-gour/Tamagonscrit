@@ -40,6 +40,7 @@ dependencies:
   flutter_local_notifications: ^17.2.2
   timezone: ^0.9.4
   shared_preferences: ^2.3.2
+  web: ^1.0.0
   random_name_generator: ^1.0.0
 
 dev_dependencies:

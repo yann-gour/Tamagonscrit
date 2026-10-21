@@ -4,6 +4,8 @@ import 'conscrit_page.dart';
 import 'monome_page.dart';
 import 'profile_page.dart';
 import 'leaderboard_page.dart';
+import 'carns_page.dart';
+import '../services/achievement_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -239,6 +241,8 @@ class _HomePageState extends State<HomePage> {
       monomeRefreshNotifier.value++;
     } else if (index == 2) {
       leaderboardRefreshNotifier.value++;
+    } else if (index == 3) {
+      achievementsRefreshNotifier.value++;
     }
     setState(() {
       _selectedIndex = index;
@@ -268,9 +272,11 @@ class _HomePageState extends State<HomePage> {
           ConscritPage(isVisible: _selectedIndex == 0),
           const MonomePage(),
           const LeaderboardPage(),
+          const CarnsPage(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
@@ -283,6 +289,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.emoji_events),
             label: "Zprom's",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu_book),
+            label: "Carn's",
           ),
         ],
         currentIndex: _selectedIndex,

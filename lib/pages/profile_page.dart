@@ -75,12 +75,12 @@ class _ProfilePageState extends State<ProfilePage> {
       final String? newPassword =
           _passwordController.text.trim().isNotEmpty ? _passwordController.text.trim() : null;
 
-      final updatedMetadata = <String, dynamic>{
-        'bucque': bucque,
-        'fams': fams,
-        'tabagns': _selectedTabagns,
-        'proms': proms,
-      };
+      final currentUser = supabase.auth.currentUser;
+      final updatedMetadata = Map<String, dynamic>.from(currentUser?.userMetadata ?? {});
+      updatedMetadata['bucque'] = bucque;
+      updatedMetadata['fams'] = fams;
+      updatedMetadata['tabagns'] = _selectedTabagns;
+      updatedMetadata['proms'] = proms;
 
       await supabase.auth.updateUser(UserAttributes(
         email: newEmail,
@@ -88,7 +88,6 @@ class _ProfilePageState extends State<ProfilePage> {
         data: updatedMetadata,
       ));
 
-      final currentUser = supabase.auth.currentUser;
       if (currentUser != null) {
         try {
           await supabase.from('profiles').upsert({
