@@ -45,6 +45,34 @@ class PromsScore {
   });
 }
 
+class PromsEvenOddScore {
+  final String groupName;
+  final double score;
+  final int playerCount;
+  final bool isEven;
+
+  PromsEvenOddScore({
+    required this.groupName,
+    required this.score,
+    required this.playerCount,
+    required this.isEven,
+  });
+}
+
+class PgJpTvaScore {
+  final String groupName;
+  final double score;
+  final int playerCount;
+  final String groupKey;
+
+  PgJpTvaScore({
+    required this.groupName,
+    required this.score,
+    required this.playerCount,
+    required this.groupKey,
+  });
+}
+
 class LeaderboardPage extends StatefulWidget {
   const LeaderboardPage({super.key});
 
@@ -65,6 +93,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   List<GadzScore> _gadzScores = [];
   List<TabagnsScore> _tabagnsScores = [];
   List<PromsScore> _promsScores = [];
+  List<PromsEvenOddScore> _promsEvenOddScores = [];
+  List<PgJpTvaScore> _pgJpTvaScores = [];
 
   static const Map<String, String> _tabagnsFullNames = {
     'Ai': 'KIN (Ai)',
@@ -256,11 +286,98 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
       promsList.sort((a, b) => b.score.compareTo(a.score));
 
+      // 6. Aggrégation par Prom's paires vs impaires
+      double evenScore = 0.0;
+      int evenCount = 0;
+      double oddScore = 0.0;
+      int oddCount = 0;
+
+      for (var g in gadzList) {
+        if (g.proms != null && g.proms! > 0) {
+          if (g.proms! % 2 == 0) {
+            evenScore += g.score;
+            evenCount += 1;
+          } else {
+            oddScore += g.score;
+            oddCount += 1;
+          }
+        }
+      }
+
+      final List<PromsEvenOddScore> promsEvenOddList = [
+        PromsEvenOddScore(
+          groupName: "Prom's paires",
+          score: evenScore,
+          playerCount: evenCount,
+          isEven: true,
+        ),
+        PromsEvenOddScore(
+          groupName: "Prom's impaires",
+          score: oddScore,
+          playerCount: oddCount,
+          isEven: false,
+        ),
+      ];
+
+      promsEvenOddList.sort((a, b) => b.score.compareTo(a.score));
+
+      // 7. Aggrégation PG / JP / TVA
+      final int currentYear = DateTime.now().year;
+      double pgScore = 0.0;
+      int pgCount = 0;
+      double jpScore = 0.0;
+      int jpCount = 0;
+      double tvaScore = 0.0;
+      int tvaCount = 0;
+
+      for (var g in gadzList) {
+        if (g.proms != null && g.proms! > 0) {
+          final int p = g.proms!;
+          final int promsYear = _getPromsYear(p);
+
+          if (promsYear > currentYear - 3) {
+            pgScore += g.score;
+            pgCount += 1;
+          } else if (promsYear > currentYear - 13) {
+            jpScore += g.score;
+            jpCount += 1;
+          } else {
+            tvaScore += g.score;
+            tvaCount += 1;
+          }
+        }
+      }
+
+      final List<PgJpTvaScore> pgJpTvaList = [
+        PgJpTvaScore(
+          groupName: "PG",
+          score: pgScore,
+          playerCount: pgCount,
+          groupKey: "PG",
+        ),
+        PgJpTvaScore(
+          groupName: "JP",
+          score: jpScore,
+          playerCount: jpCount,
+          groupKey: "JP",
+        ),
+        PgJpTvaScore(
+          groupName: "TVA",
+          score: tvaScore,
+          playerCount: tvaCount,
+          groupKey: "TVA",
+        ),
+      ];
+
+      pgJpTvaList.sort((a, b) => b.score.compareTo(a.score));
+
       if (mounted) {
         setState(() {
           _gadzScores = gadzList;
           _tabagnsScores = tabagnsList;
           _promsScores = promsList;
+          _promsEvenOddScores = promsEvenOddList;
+          _pgJpTvaScores = pgJpTvaList;
           _isLoading = false;
         });
       }
@@ -273,6 +390,60 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         });
       }
     }
+  }
+
+  int _getPromsYear(int proms) {
+    if (proms >= 1000) return proms;
+    if (proms >= 200) {
+      return 2000 + (proms % 100);
+    } else {
+      return 1900 + (proms % 100);
+    }
+  }
+
+  void _showGroupPlayersDialog(String groupTitle, List<GadzScore> players) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Membres de $groupTitle (${players.length})"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: players.isEmpty
+                ? const Text("Aucun membre dans ce groupe.")
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: players.length,
+                    itemBuilder: (context, index) {
+                      final player = players[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text('#${index + 1}', style: const TextStyle(fontSize: 12)),
+                        ),
+                        title: Text(player.bucque, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: player.fams != null && player.fams!.isNotEmpty
+                            ? Text("Fam's : ${player.fams}")
+                            : null,
+                        trailing: Text(
+                          "${_formatScore(player.score)} Trad's",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _formatScore(double score) {
@@ -417,39 +588,46 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         final fullName = _tabagnsFullNames[item.tabagns] ?? item.tabagns;
         final isMyTabagns = myTabagns != null && myTabagns.isNotEmpty && myTabagns == item.tabagns;
 
+        final tabagnsGroup = item.tabagns;
+        final groupPlayers = _gadzScores.where((g) => g.tabagns == tabagnsGroup).toList();
+        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
           elevation: isMyTabagns ? 3 : 1,
           color: isMyTabagns ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: ListTile(
-            leading: _buildRankWidget(index),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    fullName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-                if (isMyTabagns)
-                  Container(
-                    margin: const EdgeInsets.only(left: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            onTap: () => _showGroupPlayersDialog(fullName, groupPlayers),
+            child: ListTile(
+              leading: _buildRankWidget(index),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      fullName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
-              ],
-            ),
-            subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-            trailing: Text(
-              '${_formatScore(item.score)} Trad\'s',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.orange,
+                  if (isMyTabagns)
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              trailing: Text(
+                '${_formatScore(item.score)} Trad\'s',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.orange,
+                ),
               ),
             ),
           ),
@@ -483,39 +661,212 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         final item = _promsScores[index];
         final isMyProms = myProms != null && myProms == item.proms;
 
+        final promsNumber = item.proms;
+        final groupPlayers = _gadzScores.where((g) => g.proms == promsNumber).toList();
+        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
           elevation: isMyProms ? 3 : 1,
           color: isMyProms ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: ListTile(
-            leading: _buildRankWidget(index),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Prom\'s ${item.proms}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-                if (isMyProms)
-                  Container(
-                    margin: const EdgeInsets.only(left: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            onTap: () => _showGroupPlayersDialog("Prom's ${item.proms}", groupPlayers),
+            child: ListTile(
+              leading: _buildRankWidget(index),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Prom\'s ${item.proms}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
-              ],
+                  if (isMyProms)
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              trailing: Text(
+                '${_formatScore(item.score)} Trad\'s',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.orange,
+                ),
+              ),
             ),
-            subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-            trailing: Text(
-              '${_formatScore(item.score)} Trad\'s',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.orange,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTopPromsEvenOddView() {
+    if (_promsEvenOddScores.isEmpty) {
+      return const Center(
+        child: Text(
+          "Aucune donnée de prom's.",
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
+          (g) => g?.userId == currentUserId,
+          orElse: () => null,
+        );
+    final myProms = myGadz?.proms;
+    final myIsEven = myProms != null && myProms > 0 ? (myProms % 2 == 0) : null;
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: _promsEvenOddScores.length,
+      itemBuilder: (context, index) {
+        final item = _promsEvenOddScores[index];
+        final isMyGroup = myIsEven != null && myIsEven == item.isEven;
+
+        final isEven = item.isEven;
+        final groupPlayers = _gadzScores.where((g) => g.proms != null && g.proms! > 0 && (g.proms! % 2 == 0) == isEven).toList();
+        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: isMyGroup ? 3 : 1,
+          color: isMyGroup ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+          child: InkWell(
+            onTap: () => _showGroupPlayersDialog(item.groupName, groupPlayers),
+            child: ListTile(
+              leading: _buildRankWidget(index),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.groupName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                  if (isMyGroup)
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              trailing: Text(
+                '${_formatScore(item.score)} Trad\'s',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPgJpTvaView() {
+    if (_pgJpTvaScores.isEmpty) {
+      return const Center(
+        child: Text(
+          "Aucune donnée PG/JP/TVA.",
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
+          (g) => g?.userId == currentUserId,
+          orElse: () => null,
+        );
+    final myProms = myGadz?.proms;
+    String? myGroupKey;
+    if (myProms != null && myProms > 0) {
+      final int promsYear = _getPromsYear(myProms);
+      final int currentYear = DateTime.now().year;
+      if (promsYear > currentYear - 3) {
+        myGroupKey = "PG";
+      } else if (promsYear > currentYear - 13) {
+        myGroupKey = "JP";
+      } else {
+        myGroupKey = "TVA";
+      }
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: _pgJpTvaScores.length,
+      itemBuilder: (context, index) {
+        final item = _pgJpTvaScores[index];
+        final isMyGroup = myGroupKey != null && myGroupKey == item.groupKey;
+
+        final groupKey = item.groupKey;
+        final groupPlayers = _gadzScores.where((g) {
+          if (g.proms == null || g.proms! <= 0) return false;
+          final year = _getPromsYear(g.proms!);
+          final currentYear = DateTime.now().year;
+          if (groupKey == "PG") return year > currentYear - 3;
+          if (groupKey == "JP") return year > currentYear - 13;
+          return year <= currentYear - 13;
+        }).toList();
+        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: isMyGroup ? 3 : 1,
+          color: isMyGroup ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+          child: InkWell(
+            onTap: () => _showGroupPlayersDialog("Groupe ${item.groupName}", groupPlayers),
+            child: ListTile(
+              leading: _buildRankWidget(index),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.groupName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                  if (isMyGroup)
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              trailing: Text(
+                '${_formatScore(item.score)} Trad\'s',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.orange,
+                ),
               ),
             ),
           ),
@@ -567,7 +918,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     }
 
     return DefaultTabController(
-      length: 3,
+      length: 5,
       child: Column(
         children: [
           const Padding(
@@ -578,6 +929,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
             ),
           ),
           const TabBar(
+            isScrollable: true,
             tabs: [
               Tab(
                 icon: Icon(Icons.person),
@@ -591,6 +943,14 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                 icon: Icon(Icons.school),
                 text: 'Top prom\'s',
               ),
+              Tab(
+                icon: Icon(Icons.percent),
+                text: 'Paires/impaires',
+              ),
+              Tab(
+                icon: Icon(Icons.elderly),
+                text: 'PG/JP/TVA',
+              ),
             ],
           ),
           Expanded(
@@ -601,6 +961,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                   _buildTopGadzView(),
                   _buildTopTabagnsView(),
                   _buildTopPromsView(),
+                  _buildTopPromsEvenOddView(),
+                  _buildPgJpTvaView(),
                 ],
               ),
             ),

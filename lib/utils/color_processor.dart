@@ -257,7 +257,15 @@ class ColorProcessor {
         }
       }
 
-      return img.encodePng(decodedImage);
+      // Redimensionner l'image par 50 (32x32 -> 1600x1600 par frame, soit 64x32 -> 3200x1600)
+      final resizedImage = img.copyResize(
+        decodedImage,
+        width: decodedImage.width * 50,
+        height: decodedImage.height * 50,
+        interpolation: img.Interpolation.nearest,
+      );
+
+      return img.encodePng(resizedImage);
     } catch (e) {
       debugPrint('Erreur lors du traitement de monome_zg: $e');
       return null;

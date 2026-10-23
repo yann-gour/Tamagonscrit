@@ -8,7 +8,8 @@ import '../widgets/sprite_sheet_animator.dart';
 final ValueNotifier<int> monomeRefreshNotifier = ValueNotifier<int>(0);
 
 class MonomePage extends StatefulWidget {
-  const MonomePage({super.key});
+  final bool isVisible;
+  const MonomePage({super.key, required this.isVisible});
 
   @override
   State<MonomePage> createState() => _MonomePageState();
@@ -20,7 +21,8 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
   @override
   bool get wantKeepAlive => true;
 
-  bool _isLoading = true;
+  bool _isLoading = false;
+  bool _hasLoadedOnce = false;
   String? _errorMessage;
   List<Map<String, dynamic>> _conscrits = [];
   String? _playerFams;
@@ -31,11 +33,21 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
   void initState() {
     super.initState();
     monomeRefreshNotifier.addListener(_onRefreshNotified);
-    _loadData();
+    if (widget.isVisible) {
+      _loadData();
+    }
+  }
+
+  @override
+  void didUpdateWidget(MonomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isVisible && (!oldWidget.isVisible || !_hasLoadedOnce)) {
+      _loadData();
+    }
   }
 
   void _onRefreshNotified() {
-    if (mounted) {
+    if (mounted && widget.isVisible) {
       _loadData();
     }
   }
@@ -48,6 +60,7 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
 
   Future<void> _loadData() async {
     if (!mounted) return;
+    _hasLoadedOnce = true;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -225,6 +238,10 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
   }
 
   Widget _buildBody() {
+    if (!_hasLoadedOnce && !_isLoading) {
+      return const SizedBox.shrink();
+    }
+
     if (_isLoading) {
       return const Center(
         child: Column(
@@ -283,7 +300,7 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
             Icon(Icons.groups_outlined, size: 90, color: Colors.grey.shade500),
             const SizedBox(height: 16),
             const Text(
-              'Le Monôme est vide',
+              'Le monôme est vide',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
@@ -338,7 +355,7 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
           child: Column(
             children: [
               const Text(
-                'Le Monôme',
+                "Gadz'Arts, en monôme !",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),

@@ -145,7 +145,7 @@ class AchievementService {
       title: "Crapaud",
       description: "Le mot crapaud est un nom vernaculaire ambigu qui est donné en français à plus de 500 différentes espèces d'amphibiens anoures, les Bufonidae et notamment parmi eux, les représentants du genre Bufo, genre le mieux représenté sur la planète avec plus de 250 espèces.",
       icon: Icons.pets,
-      imageUrl: 'https://img.icons8.com/forma-bold-filled/24/frog.png',
+      imageUrl: 'https://img.icons8.com/ios-glyphs/90/frog.png',
       customIconColor: const Color(0xFF2E7D32),
     ),
     Achievement(

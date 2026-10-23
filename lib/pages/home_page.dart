@@ -270,7 +270,7 @@ class _HomePageState extends State<HomePage> {
         index: _selectedIndex,
         children: [
           ConscritPage(isVisible: _selectedIndex == 0),
-          const MonomePage(),
+          MonomePage(isVisible: _selectedIndex == 1),
           const LeaderboardPage(),
           const CarnsPage(),
         ],
