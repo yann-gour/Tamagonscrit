@@ -1,5 +1,12 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/color_processor.dart';
+import '../widgets/sprite_sheet_animator.dart';
+import '../widgets/avatar_conscrit_widget.dart';
+import 'home_page.dart' show homeTabNotifier;
+import 'monome_page.dart' show monomeRefreshNotifier;
 
 final ValueNotifier<int> leaderboardRefreshNotifier = ValueNotifier<int>(0);
 
@@ -10,6 +17,12 @@ class GadzScore {
   final String? tabagns;
   final int? proms;
   final double score;
+  final String avatarState;
+  final Color skinColor;
+  final Color hairColor;
+  final Color tshirtColor;
+  final Color pantsColor;
+  final bool isBiaudeWhite;
 
   GadzScore({
     required this.userId,
@@ -18,7 +31,442 @@ class GadzScore {
     this.tabagns,
     this.proms,
     required this.score,
+    this.avatarState = 'idle',
+    this.skinColor = const Color(0xFFE5AA7A),
+    this.hairColor = const Color(0xFF9C5A3C),
+    this.tshirtColor = const Color(0xFFA8E61D),
+    this.pantsColor = const Color(0xFF709AD1),
+    this.isBiaudeWhite = false,
   });
+}
+
+class GadzScoreTile extends StatelessWidget {
+  final GadzScore gadz;
+  final Widget? leading;
+  final bool isMe;
+  final VoidCallback? onTap;
+
+  const GadzScoreTile({
+    super.key,
+    required this.gadz,
+    this.leading,
+    this.isMe = false,
+    this.onTap,
+  });
+
+  String _formatScore(double score) {
+    return score.round().toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final line1Text = gadz.fams != null && gadz.fams!.isNotEmpty
+        ? "${gadz.bucque} ${gadz.fams}"
+        : gadz.bucque;
+
+    String? line2Text;
+    if (gadz.tabagns != null && gadz.tabagns!.isNotEmpty && gadz.proms != null) {
+      line2Text = "${gadz.tabagns}${gadz.proms}";
+    } else if (gadz.tabagns != null && gadz.tabagns!.isNotEmpty) {
+      line2Text = gadz.tabagns;
+    } else if (gadz.proms != null) {
+      line2Text = "${gadz.proms}";
+    }
+
+    final leadingWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        leading ?? const SizedBox.shrink(),
+        const SizedBox(width: 8),
+        AvatarConscritWidget(
+          tabagns: gadz.tabagns,
+          state: gadz.avatarState,
+          skinColor: gadz.skinColor,
+          hairColor: gadz.hairColor,
+          tshirtColor: gadz.tshirtColor,
+          pantsColor: gadz.pantsColor,
+          isBiaudeWhite: gadz.isBiaudeWhite,
+          showBackground: false,
+          spriteScale: 1.4,
+          size: 42.0,
+        ),
+      ],
+    );
+
+    return ListTile(
+      leading: leadingWidget,
+      onTap: onTap ?? () {
+        showDialog(
+          context: context,
+          builder: (context) => PlayerMonomeDialog(gadz: gadz),
+        );
+      },
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              line1Text,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          if (isMe)
+            Container(
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+        ],
+      ),
+      subtitle: line2Text != null
+          ? Text(
+              line2Text,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            )
+          : null,
+      trailing: Text(
+        "${_formatScore(gadz.score)} Trad's",
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.orange,
+        ),
+      ),
+    );
+  }
+}
+
+class PlayerMonomeDialog extends StatefulWidget {
+  final GadzScore gadz;
+
+  const PlayerMonomeDialog({super.key, required this.gadz});
+
+  @override
+  State<PlayerMonomeDialog> createState() => _PlayerMonomeDialogState();
+}
+
+class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
+  final _supabase = Supabase.instance.client;
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<Map<String, dynamic>> _conscrits = [];
+  Uint8List? _rawMonomeZgBytes;
+  final Map<String, Uint8List> _imageCache = {};
+
+  String _avatarState = 'idle';
+  Color _avatarSkinColor = const Color(0xFFE5AA7A);
+  Color _avatarHairColor = const Color(0xFF9C5A3C);
+  Color _avatarTshirtColor = const Color(0xFFA8E61D);
+  Color _avatarPantsColor = const Color(0xFF709AD1);
+  bool _avatarIsBiaudeWhite = false;
+  String? _avatarTabagns;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      if (_rawMonomeZgBytes == null) {
+        final data = await rootBundle.load('assets/monome_zg.png');
+        _rawMonomeZgBytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      }
+
+      // Récupérer les informations d'avatar depuis profiles
+      try {
+        final profileRes = await _supabase
+            .from('profiles')
+            .select('tabagns, avatar_state, avatar_skin_color, avatar_hair_color, avatar_tshirt_color, avatar_pants_color, avatar_is_biaude_white')
+            .eq('id', widget.gadz.userId)
+            .maybeSingle();
+
+        if (profileRes != null) {
+          if (profileRes['tabagns'] != null) {
+            _avatarTabagns = profileRes['tabagns'].toString();
+          }
+          if (profileRes['avatar_state'] != null && profileRes['avatar_state'].toString().isNotEmpty) {
+            _avatarState = profileRes['avatar_state'].toString();
+          }
+          if (profileRes['avatar_skin_color'] != null) {
+            _avatarSkinColor = ColorProcessor.colorFromHex(profileRes['avatar_skin_color'].toString(), fallback: const Color(0xFFE5AA7A));
+          }
+          if (profileRes['avatar_hair_color'] != null) {
+            _avatarHairColor = ColorProcessor.colorFromHex(profileRes['avatar_hair_color'].toString(), fallback: const Color(0xFF9C5A3C));
+          }
+          if (profileRes['avatar_tshirt_color'] != null) {
+            _avatarTshirtColor = ColorProcessor.colorFromHex(profileRes['avatar_tshirt_color'].toString(), fallback: const Color(0xFFA8E61D));
+          }
+          if (profileRes['avatar_pants_color'] != null) {
+            _avatarPantsColor = ColorProcessor.colorFromHex(profileRes['avatar_pants_color'].toString(), fallback: const Color(0xFF709AD1));
+          }
+          if (profileRes['avatar_is_biaude_white'] != null) {
+            _avatarIsBiaudeWhite = profileRes['avatar_is_biaude_white'] as bool;
+          }
+        }
+      } catch (e) {
+        debugPrint('Erreur chargement avatar profil joueur: $e');
+      }
+
+      final response = await _supabase
+          .from('conscrits')
+          .select()
+          .eq('user_id', widget.gadz.userId)
+          .order('created_at', ascending: true);
+
+      final List<Map<String, dynamic>> conscritsData = List<Map<String, dynamic>>.from(response);
+
+      for (int i = 0; i < conscritsData.length; i++) {
+        conscritsData[i]['seniority'] = i + 1;
+      }
+
+      final List<Map<String, dynamic>> displayConscrits = conscritsData.reversed.toList();
+
+      if (mounted) {
+        setState(() {
+          _conscrits = displayConscrits;
+          _isLoading = false;
+        });
+      }
+
+      _processImagesProgressively(conscritsData);
+    } catch (e) {
+      debugPrint('Erreur chargement monôme joueur: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "Impossible de charger le monôme.";
+        });
+      }
+    }
+  }
+
+  Future<void> _processImagesProgressively(List<Map<String, dynamic>> conscritsData) async {
+    if (_rawMonomeZgBytes == null) return;
+
+    for (var conscrit in conscritsData) {
+      if (!mounted) break;
+
+      final skinHex = conscrit['skin_color'] as String? ?? '#E5AA7A';
+      final hairHex = conscrit['hair_color'] as String? ?? '#9C5A3C';
+      final cacheKey = '${skinHex}_$hairHex';
+
+      if (!_imageCache.containsKey(cacheKey)) {
+        final skinColor = ColorProcessor.colorFromHex(skinHex);
+        final hairColor = ColorProcessor.colorFromHex(hairHex);
+
+        final processedBytes = await ColorProcessor.processMonomeZg(
+          rawMonomeZgBytes: _rawMonomeZgBytes!,
+          skinColor: skinColor,
+          hairColor: hairColor,
+        );
+
+        if (processedBytes != null && mounted) {
+          setState(() {
+            _imageCache[cacheKey] = processedBytes;
+          });
+        }
+      }
+    }
+  }
+
+  Widget _buildConscritTile(Map<String, dynamic> conscrit) {
+    final skinHex = conscrit['skin_color'] as String? ?? '#E5AA7A';
+    final hairHex = conscrit['hair_color'] as String? ?? '#9C5A3C';
+    final cacheKey = '${skinHex}_$hairHex';
+    final imageBytes = _imageCache[cacheKey];
+    final String name = (conscrit['name'] as String?) ?? '';
+    final String conscritTabagns = (conscrit['tabagns'] as String?) ?? '';
+    final int seniority = conscrit['seniority'] as int? ?? 1;
+
+    List<String> parts = [];
+    if (name.isNotEmpty) parts.add(name);
+    if (widget.gadz.fams != null && widget.gadz.fams!.isNotEmpty) parts.add(widget.gadz.fams!);
+    if (conscritTabagns.isNotEmpty) {
+      parts.add('$conscritTabagns$seniority');
+    } else {
+      parts.add('$seniority');
+    }
+
+    final displayLabel = parts.join(' ');
+
+    return Container(
+      color: const Color(0xFFE0E0E0),
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          imageBytes != null
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SpriteSheetAnimator(
+                      imageBytes: imageBytes,
+                      frameCount: 2,
+                      frameDuration: const Duration(milliseconds: 500),
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      cropLeft: 4.0,
+                      cropRight: 9.0,
+                    );
+                  },
+                )
+              : const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+          if (name.isNotEmpty)
+            Positioned(
+              bottom: 4,
+              left: 2,
+              right: 2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  displayLabel,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final bool isMe = currentUserId != null && currentUserId == widget.gadz.userId;
+
+    final List<String> details = [];
+    if (widget.gadz.tabagns != null && widget.gadz.tabagns!.isNotEmpty && widget.gadz.proms != null) {
+      details.add("${widget.gadz.tabagns}${widget.gadz.proms}");
+    } else if (widget.gadz.tabagns != null && widget.gadz.tabagns!.isNotEmpty) {
+      details.add(widget.gadz.tabagns!);
+    } else if (widget.gadz.proms != null) {
+      details.add("${widget.gadz.proms}");
+    }
+    details.add("${widget.gadz.score.round()} Trad's");
+
+    return AlertDialog(
+      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.gadz.fams != null && widget.gadz.fams!.isNotEmpty
+                ? "${widget.gadz.bucque} ${widget.gadz.fams}"
+                : widget.gadz.bucque,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            details.join(' • '),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.normal),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 520,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(child: Text(_errorMessage!))
+                : Column(
+                    children: [
+                      // Conscrit personnalisable du joueur (240px comme la page Conscrit)
+                      Center(
+                        child: Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            AvatarConscritWidget(
+                              tabagns: _avatarTabagns ?? widget.gadz.tabagns,
+                              state: _avatarState,
+                              skinColor: _avatarSkinColor,
+                              hairColor: _avatarHairColor,
+                              tshirtColor: _avatarTshirtColor,
+                              pantsColor: _avatarPantsColor,
+                              isBiaudeWhite: _avatarIsBiaudeWhite,
+                              size: 240,
+                            ),
+                            if (isMe)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Material(
+                                  color: Theme.of(context).colorScheme.primaryContainer,
+                                  shape: const CircleBorder(),
+                                  elevation: 4,
+                                  child: IconButton(
+                                    icon: Icon(
+                                      Icons.edit,
+                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                      size: 20,
+                                    ),
+                                    tooltip: 'Modifier mon conscrit',
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      monomeRefreshNotifier.value++;
+                                      homeTabNotifier.value = 1;
+                                    },
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: _conscrits.isEmpty
+                            ? Center(
+                                child: Text(
+                                  "Le monôme de ${widget.gadz.bucque} est vide.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                                ),
+                              )
+                            : GridView.builder(
+                                itemCount: _conscrits.length,
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  crossAxisSpacing: 0,
+                                  mainAxisSpacing: 0,
+                                  childAspectRatio: 950.0 / 1600.0,
+                                ),
+                                itemBuilder: (context, index) {
+                                  return _buildConscritTile(_conscrits[index]);
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Fermer'),
+        ),
+      ],
+    );
+  }
 }
 
 class TabagnsScore {
@@ -231,6 +679,18 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           }
         }
 
+        final avatarState = profile?['avatar_state']?.toString() ?? 'idle';
+        final skinHex = profile?['avatar_skin_color']?.toString();
+        final hairHex = profile?['avatar_hair_color']?.toString();
+        final tshirtHex = profile?['avatar_tshirt_color']?.toString();
+        final pantsHex = profile?['avatar_pants_color']?.toString();
+        final isBiaudeWhite = profile?['avatar_is_biaude_white'] as bool? ?? false;
+
+        final skinColor = ColorProcessor.colorFromHex(skinHex, fallback: const Color(0xFFE5AA7A));
+        final hairColor = ColorProcessor.colorFromHex(hairHex, fallback: const Color(0xFF9C5A3C));
+        final tshirtColor = ColorProcessor.colorFromHex(tshirtHex, fallback: const Color(0xFFA8E61D));
+        final pantsColor = ColorProcessor.colorFromHex(pantsHex, fallback: const Color(0xFF709AD1));
+
         gadzList.add(GadzScore(
           userId: userId,
           bucque: bucque,
@@ -238,6 +698,12 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           tabagns: tabagns?.isNotEmpty == true ? tabagns : null,
           proms: proms,
           score: score,
+          avatarState: avatarState,
+          skinColor: skinColor,
+          hairColor: hairColor,
+          tshirtColor: tshirtColor,
+          pantsColor: pantsColor,
+          isBiaudeWhite: isBiaudeWhite,
         ));
       }
 
@@ -402,11 +868,17 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   }
 
   void _showGroupPlayersDialog(String groupTitle, List<GadzScore> players) {
+    final String dialogTitle = (groupTitle == "PG" || groupTitle == "JP" || groupTitle == "TVA")
+        ? "Gadz $groupTitle"
+        : "Gadz de $groupTitle";
+
+    final currentUserId = _supabase.auth.currentUser?.id;
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Membres de $groupTitle (${players.length})"),
+          title: Text(dialogTitle),
           content: SizedBox(
             width: double.maxFinite,
             child: players.isEmpty
@@ -416,21 +888,12 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                     itemCount: players.length,
                     itemBuilder: (context, index) {
                       final player = players[index];
-                      return ListTile(
+                      return GadzScoreTile(
+                        gadz: player,
                         leading: CircleAvatar(
                           child: Text('#${index + 1}', style: const TextStyle(fontSize: 12)),
                         ),
-                        title: Text(player.bucque, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: player.fams != null && player.fams!.isNotEmpty
-                            ? Text("Fam's : ${player.fams}")
-                            : null,
-                        trailing: Text(
-                          "${_formatScore(player.score)} Trad's",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange,
-                          ),
-                        ),
+                        isMe: player.userId == currentUserId,
                       );
                     },
                   ),
@@ -447,10 +910,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   }
 
   String _formatScore(double score) {
-    if (score % 1 == 0) {
-      return score.toInt().toString();
-    }
-    return score.toStringAsFixed(1);
+    return score.round().toString();
   }
 
   Widget _buildRankWidget(int index) {
@@ -500,62 +960,14 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         final item = _gadzScores[index];
         final isMe = item.userId == currentUserId;
 
-        final List<String> details = [];
-        if (item.fams != null && item.fams!.isNotEmpty) {
-          details.add("Fam's : ${item.fams}");
-        }
-        if (item.tabagns != null && item.tabagns!.isNotEmpty) {
-          details.add("Tabagn's : ${item.tabagns}");
-        }
-        if (item.proms != null) {
-          details.add("Prom's : ${item.proms}");
-        }
-
-        final subtitleText = details.isNotEmpty
-            ? details.join('  •  ')
-            : 'Aucune information additionnelle';
-
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
           elevation: isMe ? 3 : 1,
           color: isMe ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: ListTile(
+          child: GadzScoreTile(
+            gadz: item,
             leading: _buildRankWidget(index),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.bucque,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                if (isMe)
-                  Container(
-                    margin: const EdgeInsets.only(left: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-              ],
-            ),
-            subtitle: Text(
-              subtitleText,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            ),
-            trailing: Text(
-              "${_formatScore(item.score)} Trad's",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.orange,
-              ),
-            ),
+            isMe: isMe,
           ),
         );
       },
@@ -836,7 +1248,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           elevation: isMyGroup ? 3 : 1,
           color: isMyGroup ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
           child: InkWell(
-            onTap: () => _showGroupPlayersDialog("Groupe ${item.groupName}", groupPlayers),
+            onTap: () => _showGroupPlayersDialog(item.groupName, groupPlayers),
             child: ListTile(
               leading: _buildRankWidget(index),
               title: Row(

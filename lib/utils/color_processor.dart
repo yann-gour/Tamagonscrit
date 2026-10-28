@@ -257,26 +257,23 @@ class ColorProcessor {
         }
       }
 
-      // Redimensionner l'image par 50 (32x32 -> 1600x1600 par frame, soit 64x32 -> 3200x1600)
-      final resizedImage = img.copyResize(
-        decodedImage,
-        width: decodedImage.width * 50,
-        height: decodedImage.height * 50,
-        interpolation: img.Interpolation.nearest,
-      );
-
-      return img.encodePng(resizedImage);
+      return img.encodePng(decodedImage);
     } catch (e) {
       debugPrint('Erreur lors du traitement de monome_zg: $e');
       return null;
     }
   }
 
-  /// Parse une couleur depuis un string Hex (ex: "#FF00FF") avec valeur par défaut
+  /// Parse une couleur depuis un string Hex (ex: "#FF00FF" ou "Color(0xff123456)") avec valeur par défaut
   static Color colorFromHex(String? hexColor, {Color fallback = const Color(0xFFE5AA7A)}) {
     if (hexColor == null || hexColor.trim().isEmpty) return fallback;
     try {
-      var hex = hexColor.trim().toUpperCase().replaceAll("#", "");
+      var hex = hexColor.trim().toUpperCase()
+          .replaceAll("#", "")
+          .replaceAll("COLOR(0X", "")
+          .replaceAll("COLOR(", "")
+          .replaceAll(")", "")
+          .replaceAll("0X", "");
       if (hex.length == 6) {
         hex = "FF$hex";
       }

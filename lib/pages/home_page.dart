@@ -7,6 +7,8 @@ import 'leaderboard_page.dart';
 import 'carns_page.dart';
 import '../services/achievement_service.dart';
 
+final ValueNotifier<int> homeTabNotifier = ValueNotifier<int>(0);
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -20,9 +22,22 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    homeTabNotifier.addListener(_onHomeTabNotified);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkBucqueOnStartup();
     });
+  }
+
+  void _onHomeTabNotified() {
+    if (mounted && _selectedIndex != homeTabNotifier.value) {
+      _onItemTapped(homeTabNotifier.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    homeTabNotifier.removeListener(_onHomeTabNotified);
+    super.dispose();
   }
 
   void _checkBucqueOnStartup() {
@@ -47,15 +62,28 @@ class _HomePageState extends State<HomePage> {
       final tabagns = metadata['tabagns']?.toString().trim();
       final proms = metadata['proms'] != null ? int.tryParse(metadata['proms'].toString()) : null;
 
+      final avatarState = metadata['avatar_state']?.toString();
+      final avatarSkin = metadata['avatar_skin_color']?.toString();
+      final avatarHair = metadata['avatar_hair_color']?.toString();
+      final avatarTshirt = metadata['avatar_tshirt_color']?.toString();
+      final avatarPants = metadata['avatar_pants_color']?.toString();
+
       if (bucque != null && bucque.isNotEmpty) {
-        await Supabase.instance.client.from('profiles').upsert({
+        final profileMap = <String, dynamic>{
           'id': userId,
           'bucque': bucque,
           'fams': fams?.isNotEmpty == true ? fams : null,
           'tabagns': tabagns?.isNotEmpty == true ? tabagns : null,
           'proms': proms,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
-        });
+        };
+        if (avatarState != null) profileMap['avatar_state'] = avatarState;
+        if (avatarSkin != null) profileMap['avatar_skin_color'] = avatarSkin;
+        if (avatarHair != null) profileMap['avatar_hair_color'] = avatarHair;
+        if (avatarTshirt != null) profileMap['avatar_tshirt_color'] = avatarTshirt;
+        if (avatarPants != null) profileMap['avatar_pants_color'] = avatarPants;
+
+        await Supabase.instance.client.from('profiles').upsert(profileMap);
       }
     } catch (e) {
       debugPrint('Erreur synchro profil au démarrage: $e');
@@ -176,7 +204,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: selectedTabagns,
+                        initialValue: selectedTabagns,
                         decoration: const InputDecoration(
                           labelText: 'Tabagn\'s',
                           border: OutlineInputBorder(),
@@ -247,6 +275,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _selectedIndex = index;
     });
+    homeTabNotifier.value = index;
   }
 
   @override

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class Achievement {
   final String id;
   final String title;
+  final String subtitle;
   final String description;
   final IconData icon;
   final String? imageUrl;
@@ -15,6 +16,7 @@ class Achievement {
   Achievement({
     required this.id,
     required this.title,
+    required this.subtitle,
     required this.description,
     required this.icon,
     this.imageUrl,
@@ -37,30 +39,35 @@ class AchievementService {
     Achievement(
       id: 'a_l_ecole',
       title: "A l'Ecole",
+      subtitle: "Usiner un conscrit jusqu'à son Zcu",
       description: "Moines dormez sous vos six pieds de terre, \nDormez en paix et vive les Gadz'Arts !",
       icon: Icons.school,
     ),
     Achievement(
       id: 'aux_trads',
       title: "Aux Trad's",
+      subtitle: "Usiner un conscrit 100% Trad's",
       description: "Chanter bien haut d'une voix triomphale : \nLes Trad's mourront quand mourront les Gadz'Arts !",
       icon: Icons.military_tech,
     ),
     Achievement(
       id: 'aux_sacques',
       title: "Aux Sacqués",
+      subtitle: "Faire sacquer son conscrit (24h)",
       description: "Nous chanterons sans soucis de l'orage,\nQue votre action est digne d'un Gadz'Arts !",
       icon: Icons.history,
     ),
     Achievement(
       id: 'aux_lourdes',
       title: "Aux Lourdés",
+      subtitle: "Faire lourder son conscrit",
       description: "Mais vous aurez une force infinie, \nCar malgré tout vous êtes des Gadz'Arts !",
       icon: Icons.exit_to_app,
     ),
     Achievement(
       id: 'aux_disparus',
       title: "Aux Disparus",
+      subtitle: "Disparaître du jeu",
       description: "Car dans nos coeurs sont gravés à jamais, \nCes quelques mots : vous êtes des Gadz'Arts !",
       icon: Icons.heart_broken,
       imageUrl: 'https://img.icons8.com/material/96/skull.png',
@@ -68,18 +75,21 @@ class AchievementService {
     Achievement(
       id: 'a_la_fraterns',
       title: "A la Fratern's",
+      subtitle: "Avoir 100 gadz dans son monôme",
       description: "Fraternité c'est la notre devise, \nC'est la devise de tous les vrais Gadz'Arts !",
       icon: Icons.groups,
     ),
     Achievement(
       id: 'a_bacchus',
       title: "A Bacchus",
+      subtitle: "Chouiller",
       description: "Ce jus divin qui réjouit la terre, \nN'emplit jamais la coupe d'un Gadz'Arts !",
       icon: Icons.wine_bar,
     ),
     Achievement(
       id: 'monome_ch',
       title: "Le Grand Bastringue",
+      subtitle: "Usiner un conscrit à Châlon's",
       description: "On a souvent parlé de la belle vie, que les Gadz'Arts menaient au Tabagnon !",
       icon: Icons.savings,
       imageUrl: 'https://img.icons8.com/external-tanah-basah-glyph-tanah-basah/48/external-boar-animals-tanah-basah-glyph-tanah-basah.png',
@@ -89,6 +99,7 @@ class AchievementService {
     Achievement(
       id: 'monome_an',
       title: "Dans les rues",
+      subtitle: "Usiner un conscrit à Boquette",
       description: "Dans les rues que nous traversons en monôme...",
       icon: Icons.flutter_dash,
       imageUrl: 'https://img.icons8.com/material/96/falcon.png',
@@ -98,6 +109,7 @@ class AchievementService {
     Achievement(
       id: 'monome_ai',
       title: "Les Olives",
+      subtitle: "Usiner un conscrit à KIN",
       description: "J'ai de belles olives, oui qu'on se le dise !",
       icon: Icons.water,
       imageUrl: 'https://img.icons8.com/material/96/dolphin.png',
@@ -107,6 +119,7 @@ class AchievementService {
     Achievement(
       id: 'monome_cl',
       title: "En monôme !",
+      subtitle: "Usiner un conscrit à Clun's",
       description: "Formez l'monôme, formez l'monôme !",
       icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/material/96/year-of-goat.png',
@@ -116,6 +129,7 @@ class AchievementService {
     Achievement(
       id: 'monome_li',
       title: "Monôme de Birse",
+      subtitle: "Usiner un conscrit à Birse",
       description: "Entre ces murs, résonnent les voix du passé !",
       icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/material/96/bear.png',
@@ -125,6 +139,7 @@ class AchievementService {
     Achievement(
       id: 'monome_bo',
       title: "Monôme de Bordel's",
+      subtitle: "Usiner un conscrit à Bordel's",
       description: "Non ce n'est pas l'amphi...",
       icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/material/96/bull.png',
@@ -134,6 +149,7 @@ class AchievementService {
     Achievement(
       id: 'monome_me',
       title: "Monôme de Siber's",
+      subtitle: "Usiner un conscrit à Siber's",
       description: "Dans le froid du grand nord d'la Lorraine...",
       icon: Icons.nights_stay,
       imageUrl: 'https://img.icons8.com/material/96/wolf.png',
@@ -143,6 +159,7 @@ class AchievementService {
     Achievement(
       id: 'crapaud',
       title: "Crapaud",
+      subtitle: "Usiner un conscrit sans Trad's",
       description: "Le mot crapaud est un nom vernaculaire ambigu qui est donné en français à plus de 500 différentes espèces d'amphibiens anoures, les Bufonidae et notamment parmi eux, les représentants du genre Bufo, genre le mieux représenté sur la planète avec plus de 250 espèces.",
       icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/ios-glyphs/90/frog.png',
@@ -151,6 +168,7 @@ class AchievementService {
     Achievement(
       id: 'le_duc',
       title: "Le Duc",
+      subtitle: "Finir les autres pages du carn's",
       description: "Aider tout ce qui est utile, \nAttacher son nom à tout ce qui est bon",
       icon: Icons.workspace_premium,
     ),
@@ -337,7 +355,7 @@ class AchievementService {
   bool isUnlocked(String achievementId) {
     final achievement = _achievements.firstWhere(
       (a) => a.id == achievementId,
-      orElse: () => Achievement(id: '', title: '', description: '', icon: Icons.help),
+      orElse: () => Achievement(id: '', title: '', subtitle: '', description: '', icon: Icons.help),
     );
     return achievement.isUnlocked;
   }
@@ -349,7 +367,7 @@ class AchievementService {
 
     final achievement = _achievements.firstWhere(
       (a) => a.id == achievementId,
-      orElse: () => Achievement(id: '', title: '', description: '', icon: Icons.help),
+      orElse: () => Achievement(id: '', title: '', subtitle: '', description: '', icon: Icons.help),
     );
 
     if (achievement.id.isEmpty || achievement.isUnlocked) {
@@ -441,6 +459,17 @@ class AchievementService {
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
+              if (achievement.subtitle.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  achievement.subtitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Text(
                 achievement.description,

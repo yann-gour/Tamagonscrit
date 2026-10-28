@@ -42,6 +42,7 @@ dependencies:
   shared_preferences: ^2.3.2
   web: ^1.0.0
   random_name_generator: ^1.0.0
+  web_color_picker: ^1.0.0
 
 dev_dependencies:
   flutter_test:

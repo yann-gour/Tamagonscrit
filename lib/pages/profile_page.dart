@@ -180,7 +180,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedTabagns,
+                  initialValue: _selectedTabagns,
                   decoration: const InputDecoration(
                     labelText: 'Tabagn\'s',
                     border: OutlineInputBorder(),

@@ -209,16 +209,34 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                       ],
                     ),
                     subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 6.0),
-                      child: Text(
-                        item.isUnlocked ? item.description : "???",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontStyle: FontStyle.italic,
-                          color: item.isUnlocked
-                              ? Theme.of(context).textTheme.bodyMedium?.color
-                              : Colors.grey.shade500,
-                        ),
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (item.subtitle.isNotEmpty) ...[
+                            Text(
+                              item.subtitle,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: item.isUnlocked
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                          Text(
+                            item.isUnlocked ? item.description : "???",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic,
+                              color: item.isUnlocked
+                                  ? Theme.of(context).textTheme.bodyMedium?.color
+                                  : Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
