@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import '../utils/color_processor.dart';
+import '../constants/skins.dart';
 import 'sprite_sheet_animator.dart';
 
 class AvatarConscritWidget extends StatefulWidget {
@@ -11,6 +13,7 @@ class AvatarConscritWidget extends StatefulWidget {
   final Color tshirtColor;
   final Color pantsColor;
   final bool isBiaudeWhite;
+  final String equippedSkin; // 'none', 'equerre', etc.
   final bool showBackground;
   final double spriteScale;
   final double size;
@@ -24,6 +27,7 @@ class AvatarConscritWidget extends StatefulWidget {
     this.tshirtColor = const Color(0xFFA8E61D),
     this.pantsColor = const Color(0xFF709AD1),
     this.isBiaudeWhite = false,
+    this.equippedSkin = 'none',
     this.showBackground = true,
     this.spriteScale = 0.7,
     this.size = 140.0,
@@ -70,11 +74,13 @@ class _AvatarConscritWidgetState extends State<AvatarConscritWidget> {
 
   // Cache mémoire par clé (asset_skinHex_hairHex_tshirtHex_pantsHex_biaudeWhite)
   static final Map<String, Uint8List> _avatarCache = {};
+  static final Map<String, Uint8List> _skinBytesCache = {};
 
   @override
   void initState() {
     super.initState();
     _processAvatarImage();
+    _loadSkinBytes(widget.equippedSkin);
   }
 
   @override
@@ -87,6 +93,21 @@ class _AvatarConscritWidgetState extends State<AvatarConscritWidget> {
         oldWidget.pantsColor != widget.pantsColor ||
         oldWidget.isBiaudeWhite != widget.isBiaudeWhite) {
       _processAvatarImage();
+    }
+    if (oldWidget.equippedSkin != widget.equippedSkin) {
+      _loadSkinBytes(widget.equippedSkin);
+    }
+  }
+
+  Future<void> _loadSkinBytes(String skinId) async {
+    final skin = AvatarSkins.getSkin(skinId);
+    if (skin.assetPath == null || _skinBytesCache.containsKey(skin.id)) return;
+    try {
+      final data = await rootBundle.load(skin.assetPath!);
+      _skinBytesCache[skin.id] = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Erreur lors du chargement du skin $skinId : $e');
     }
   }
 
@@ -151,6 +172,8 @@ class _AvatarConscritWidgetState extends State<AvatarConscritWidget> {
         ? 'assets/fond_$tabagnsLower.png'
         : 'assets/fond.png';
 
+    final activeSkin = AvatarSkins.getSkin(widget.equippedSkin);
+
     return Container(
       width: widget.size,
       height: widget.size,
@@ -175,19 +198,36 @@ class _AvatarConscritWidgetState extends State<AvatarConscritWidget> {
                     Image.asset('assets/fond.png', fit: BoxFit.cover),
               ),
 
-            // Conscrit animé recoloré
+            // Conscrit animé recoloré + Skin superposé
             Center(
               child: _isProcessing
                   ? const CircularProgressIndicator(strokeWidth: 2)
-                  : _processedImageBytes != null
-                      ? SpriteSheetAnimator(
-                          imageBytes: _processedImageBytes!,
-                          frameCount: 2,
-                          frameDuration: const Duration(milliseconds: 600),
-                          width: widget.size * widget.spriteScale,
-                          height: widget.size * widget.spriteScale,
-                        )
-                      : const Icon(Icons.person, color: Colors.grey),
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (_processedImageBytes != null)
+                          SpriteSheetAnimator(
+                            imageBytes: _processedImageBytes!,
+                            frameCount: 2,
+                            frameDuration: const Duration(milliseconds: 600),
+                            width: widget.size * widget.spriteScale,
+                            height: widget.size * widget.spriteScale,
+                          )
+                        else
+                          const Icon(Icons.person, color: Colors.grey),
+
+                        // Superposition du skin
+                        if (activeSkin.assetPath != null &&
+                            _skinBytesCache[activeSkin.id] != null)
+                          SpriteSheetAnimator(
+                            imageBytes: _skinBytesCache[activeSkin.id]!,
+                            frameCount: 2,
+                            frameDuration: const Duration(milliseconds: 600),
+                            width: widget.size * widget.spriteScale,
+                            height: widget.size * widget.spriteScale,
+                          ),
+                      ],
+                    ),
             ),
           ],
         ),

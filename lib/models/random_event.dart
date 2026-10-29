@@ -1,14 +1,30 @@
+class EventConditionContext {
+  final double birse;
+  final double trads;
+  final int brousoufs;
+
+  EventConditionContext({
+    required this.birse,
+    required this.trads,
+    required this.brousoufs,
+  });
+}
+
 class EventEffectContext {
   final void Function(double deltaBirse) addBirse;
   final void Function(double deltaTrads) addTrads;
+  final void Function(int deltaBrousoufs) addBrousoufs;
   final void Function(double value) setEnergie;
   final void Function(String activity, String image) setActivity;
+  final void Function() resetState;
 
   EventEffectContext({
     required this.addBirse,
     required this.addTrads,
+    required this.addBrousoufs,
     required this.setEnergie,
     required this.setActivity,
+    required this.resetState,
   });
 }
 
@@ -16,11 +32,13 @@ class EventChoice {
   final String label;
   final String Function(String conscritName) getResultText;
   final void Function(EventEffectContext context) applyEffect;
+  final bool Function(EventConditionContext context)? isAvailable;
 
   const EventChoice({
     required this.label,
     required this.getResultText,
     required this.applyEffect,
+    this.isAvailable,
   });
 }
 
@@ -62,7 +80,7 @@ final RandomEvent chouilleEvent = RandomEvent(
     ),
     EventChoice(
       label: 'Se mettre un placard',
-      getResultText: (name) => '$name est resté toute la nuit au foy\'s !',
+      getResultText: (name) => '$name est resté toute la nuit chouiller au foy\'s !',
       applyEffect: (context) {
         context.addBirse(-20.0);
         context.addTrads(20.0);
@@ -103,7 +121,7 @@ final RandomEvent finsEvent = RandomEvent(
     ),
     EventChoice(
       label: 'Rester bouffer à Kgib\'s',
-      getResultText: (name) => '$name est resté bouffer à Kgib\'s !',
+      getResultText: (name) => '$name est resté bouffer seul à Kgib\'s !',
       applyEffect: (context) {
         context.addTrads(-20.0);
         context.setEnergie(100.0);
@@ -120,7 +138,52 @@ final RandomEvent finsEvent = RandomEvent(
   ],
 );
 
+final RandomEvent brousoufsEvent = RandomEvent(
+  id: 'brousoufs',
+  title: 'Brousoufs !',
+  getDescription: (name) => '$name a besoin de brousoufs, comment va-t-on s\'y prendre ?',
+  choices: [
+    EventChoice(
+      label: 'Participer à un projet AMJE',
+      getResultText: (name) => '$name a participé à un projet AMJE et gagné 50 brousoufs !',
+      isAvailable: (context) => context.birse >= 50.0,
+      applyEffect: (context) {
+        context.addBrousoufs(50);
+      },
+    ),
+    EventChoice(
+      label: 'Donner des cours de maths',
+      getResultText: (name) => '$name a donné des cours de maths et gagné 10 brousoufs !',
+      isAvailable: (context) => context.birse >= 10.0,
+      applyEffect: (context) {
+        context.addBrousoufs(10);
+      },
+    ),
+    EventChoice(
+      label: 'Demander un prêt d\'hon\'s à la SOCE',
+      getResultText: (name) => '$name a reçu un prêt d\'hon\'s de 100 brousoufs !',
+      isAvailable: (context) => context.trads >= 50.0,
+      applyEffect: (context) {
+        context.addBrousoufs(100);
+      },
+    ),
+    EventChoice(
+      label: 'Birouter au foy\'s',
+      getResultText: (name) => '$name a birouté au foy\'s et s\'est fait mettre HP...',
+      applyEffect: (context) {
+        context.resetState();
+      },
+    ),
+    EventChoice(
+      label: 'Ne rien faire',
+      getResultText: (name) => '$name n\'a rien fait et reste sans brousoufs.',
+      applyEffect: (context) {},
+    ),
+  ],
+);
+
 final List<RandomEvent> allRandomEvents = [
   chouilleEvent,
   finsEvent,
+  brousoufsEvent,
 ];

@@ -43,6 +43,7 @@ dependencies:
   web: ^1.0.0
   random_name_generator: ^1.0.0
   web_color_picker: ^1.0.0
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -95,6 +96,19 @@ flutter:
     - assets/fond_me.png
     - assets/chouille.png
     - assets/fins.png
+    - assets/skin_equerre.png
+    - assets/skin_bache_bleue.png
+    - assets/skin_bache_rouge.png
+    - assets/skin_bache_verte.png
+    - assets/skin_fignos.png
+    - assets/skin_craps.png
+    - assets/bacchus.mp3
+    - assets/disparus.mp3
+    - assets/ecole.mp3
+    - assets/fraterns.mp3
+    - assets/lourdes.mp3
+    - assets/sacques.mp3
+    - assets/trads.mp3
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

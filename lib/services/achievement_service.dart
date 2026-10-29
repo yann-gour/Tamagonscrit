@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'audio_service.dart';
 
 class Achievement {
   final String id;
@@ -11,6 +12,8 @@ class Achievement {
   final String? imageUrl;
   final Color? customIconColor;
   final Color? customBackgroundColor;
+  final int zloeils;
+  final String? audioPath;
   bool isUnlocked;
 
   Achievement({
@@ -22,6 +25,8 @@ class Achievement {
     this.imageUrl,
     this.customIconColor,
     this.customBackgroundColor,
+    this.zloeils = 100,
+    this.audioPath,
     this.isUnlocked = false,
   });
 }
@@ -42,6 +47,7 @@ class AchievementService {
       subtitle: "Usiner un conscrit jusqu'à son Zcu",
       description: "Moines dormez sous vos six pieds de terre, \nDormez en paix et vive les Gadz'Arts !",
       icon: Icons.school,
+      audioPath: 'ecole.mp3',
     ),
     Achievement(
       id: 'aux_trads',
@@ -49,6 +55,7 @@ class AchievementService {
       subtitle: "Usiner un conscrit 100% Trad's",
       description: "Chanter bien haut d'une voix triomphale : \nLes Trad's mourront quand mourront les Gadz'Arts !",
       icon: Icons.military_tech,
+      audioPath: 'trads.mp3',
     ),
     Achievement(
       id: 'aux_sacques',
@@ -56,6 +63,7 @@ class AchievementService {
       subtitle: "Faire sacquer son conscrit (24h)",
       description: "Nous chanterons sans soucis de l'orage,\nQue votre action est digne d'un Gadz'Arts !",
       icon: Icons.history,
+      audioPath: 'sacques.mp3',
     ),
     Achievement(
       id: 'aux_lourdes',
@@ -63,6 +71,8 @@ class AchievementService {
       subtitle: "Faire lourder son conscrit",
       description: "Mais vous aurez une force infinie, \nCar malgré tout vous êtes des Gadz'Arts !",
       icon: Icons.exit_to_app,
+      zloeils: 200,
+      audioPath: 'lourdes.mp3',
     ),
     Achievement(
       id: 'aux_disparus',
@@ -71,6 +81,8 @@ class AchievementService {
       description: "Car dans nos coeurs sont gravés à jamais, \nCes quelques mots : vous êtes des Gadz'Arts !",
       icon: Icons.heart_broken,
       imageUrl: 'https://img.icons8.com/material/96/skull.png',
+      zloeils: 1000,
+      audioPath: 'disparus.mp3',
     ),
     Achievement(
       id: 'a_la_fraterns',
@@ -78,6 +90,8 @@ class AchievementService {
       subtitle: "Avoir 100 gadz dans son monôme",
       description: "Fraternité c'est la notre devise, \nC'est la devise de tous les vrais Gadz'Arts !",
       icon: Icons.groups,
+      zloeils: 1000,
+      audioPath: 'fraterns.mp3',
     ),
     Achievement(
       id: 'a_bacchus',
@@ -85,6 +99,7 @@ class AchievementService {
       subtitle: "Chouiller",
       description: "Ce jus divin qui réjouit la terre, \nN'emplit jamais la coupe d'un Gadz'Arts !",
       icon: Icons.wine_bar,
+      audioPath: 'bacchus.mp3',
     ),
     Achievement(
       id: 'monome_ch',
@@ -164,6 +179,7 @@ class AchievementService {
       icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/ios-glyphs/90/frog.png',
       customIconColor: const Color(0xFF2E7D32),
+      zloeils: 10,
     ),
     Achievement(
       id: 'le_duc',
@@ -171,6 +187,7 @@ class AchievementService {
       subtitle: "Finir les autres pages du carn's",
       description: "Aider tout ce qui est utile, \nAttacher son nom à tout ce qui est bon",
       icon: Icons.workspace_premium,
+      zloeils: 10000,
     ),
   ];
 
@@ -179,6 +196,10 @@ class AchievementService {
   List<Achievement> get achievements => _achievements;
 
   int get unlockedCount => _achievements.where((a) => a.isUnlocked).length;
+
+  int get totalZloeils => _achievements
+      .where((a) => a.isUnlocked)
+      .fold(0, (sum, a) => sum + a.zloeils);
 
   Future<void> loadAchievements() async {
     try {
@@ -328,11 +349,14 @@ class AchievementService {
   }
 
   Future<void> _syncAchievementsToSupabase(String userId, List<String> unlockedIds) async {
+    final currentZloeils = totalZloeils;
+
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         final existingData = Map<String, dynamic>.from(user.userMetadata ?? {});
         existingData['achievements'] = unlockedIds;
+        existingData['zloeils'] = currentZloeils;
         await Supabase.instance.client.auth.updateUser(
           UserAttributes(data: existingData),
         );
@@ -342,13 +366,17 @@ class AchievementService {
     }
 
     try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final bucque = user?.userMetadata?['bucque']?.toString() ?? '';
       await Supabase.instance.client.from('profiles').upsert({
         'id': userId,
+        'bucque': bucque,
         'achievements': unlockedIds,
+        'zloeils': currentZloeils,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
-      debugPrint('Note: La colonne "achievements" n\'existe peut-être pas encore sur la table profiles ($e)');
+      debugPrint('Note: Synchro table profiles achievements: $e');
     }
   }
 
@@ -397,6 +425,11 @@ class AchievementService {
     }
 
     achievementsRefreshNotifier.value++;
+
+    // Jouer le son du succès s'il est débloqué et s'il existe
+    if (achievement.isUnlocked && achievement.audioPath != null) {
+      AudioService.playAchievementSound(achievement.audioPath!);
+    }
 
     // Afficher le popup
     if (context.mounted) {
@@ -470,6 +503,21 @@ class AchievementService {
                   ),
                 ),
               ],
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.diamond, color: Colors.cyan, size: 18),
+                  const SizedBox(width: 4),
+                  Text(
+                    '+${achievement.zloeils} Zloeils',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.cyan,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
               Text(
                 achievement.description,

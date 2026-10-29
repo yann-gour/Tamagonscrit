@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/achievement_service.dart';
+import '../services/audio_service.dart';
 
 class CarnsPage extends StatefulWidget {
   const CarnsPage({super.key});
@@ -133,6 +134,11 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                         : BorderSide(color: Colors.grey.shade300, width: 1),
                   ),
                   child: ListTile(
+                    onTap: () {
+                      if (item.isUnlocked && item.audioPath != null) {
+                        AudioService.playAchievementSound(item.audioPath!);
+                      }
+                    },
                     contentPadding: const EdgeInsets.all(12),
                     leading: Container(
                       decoration: BoxDecoration(
@@ -202,6 +208,26 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                             ),
                           ),
                         ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.diamond,
+                              color: item.isUnlocked ? Colors.cyan : Colors.grey.shade400,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '+${item.zloeils}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: item.isUnlocked ? Colors.cyan : Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
                         if (item.isUnlocked)
                           const Icon(Icons.check_circle, color: Colors.green, size: 20)
                         else

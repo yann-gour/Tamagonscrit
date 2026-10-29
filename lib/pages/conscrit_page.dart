@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 import '../utils/color_processor.dart';
-import '../utils/color_palettes.dart';
+import '../constants/color_palettes.dart';
 import '../utils/conscrit_names.dart';
 import '../widgets/sprite_sheet_animator.dart';
 import '../models/random_event.dart';
@@ -34,9 +34,13 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   double _energie = 100.0;
   double _birse = 0.0;
   double _trads = 0.0;
+  int _brousoufs = 0;
   bool _hasShown100Jours = false;
   bool _hasShownBapts = false;
+  bool _hasShownParrainage = false;
+  bool _hasShownPriseEnMs = false;
   String? _tabagns;
+  String? _conscritFams;
   DateTime? _startTime;
   String _currentImage = 'conscrit.png';
   String _activity = 'idle';
@@ -135,6 +139,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                         _showCongratulations();
                       } else {
                         _startTimer();
+                        if (!_hasShownPriseEnMs) {
+                          _schedulePriseEnMsPopup();
+                        }
                       }
                     }
                   },
@@ -278,8 +285,11 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
           'pants_color': ColorProcessor.colorToHex(_pantsColor),
           'tabagns': null,
+          'fams': null,
           'has_shown_100_jours': false,
           'has_shown_bapts': false,
+          'has_shown_parrainage': false,
+          'has_shown_prise_en_ms': false,
         });
         _showTabagnsRequiredDialog();
       } else {
@@ -290,9 +300,13 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           _energie = (data['energie'] as num).toDouble();
           _birse = (data['birse'] as num).toDouble();
           _trads = (data['trads'] as num).toDouble();
+          _brousoufs = (data['brousoufs'] as num?)?.toInt() ?? 0;
           _tabagns = data['tabagns'] as String?;
+          _conscritFams = data['fams'] as String?;
           _hasShown100Jours = data['has_shown_100_jours'] as bool? ?? false;
           _hasShownBapts = data['has_shown_bapts'] as bool? ?? false;
+          _hasShownParrainage = data['has_shown_parrainage'] as bool? ?? false;
+          _hasShownPriseEnMs = data['has_shown_prise_en_ms'] as bool? ?? false;
           
           // Compatibilité : si c'est encore un gif en DB, on force le png
           String gifFromDb = data['current_gif'] as String;
@@ -344,6 +358,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
             _showCongratulations();
           } else {
             _startTimer();
+            if (!_hasShownPriseEnMs) {
+              _schedulePriseEnMsPopup();
+            }
           }
         }
       }
@@ -450,7 +467,15 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 16),
-              ...event.choices.map((choice) {
+              ...event.choices.where((choice) {
+                if (choice.isAvailable == null) return true;
+                final condContext = EventConditionContext(
+                  birse: _birse,
+                  trads: _trads,
+                  brousoufs: _brousoufs,
+                );
+                return choice.isAvailable!(condContext);
+              }).map((choice) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: ElevatedButton(
@@ -477,6 +502,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   }
 
   void _handleEventChoiceSelected(RandomEvent event, EventChoice choice) {
+    final String currentName = _name;
+
     setState(() {
       final effectContext = EventEffectContext(
         addBirse: (delta) {
@@ -484,6 +511,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         },
         addTrads: (delta) {
           _trads = (_trads + delta).clamp(0.0, 100.0);
+        },
+        addBrousoufs: (delta) {
+          _brousoufs += delta;
         },
         setEnergie: (val) {
           _energie = val.clamp(0.0, 100.0);
@@ -495,6 +525,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
             _startTime = DateTime.now().toUtc();
           }
         },
+        resetState: () {
+          _resetState();
+        },
       );
 
       choice.applyEffect(effectContext);
@@ -503,7 +536,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
     _saveStateToSupabase();
 
-    final resultText = choice.getResultText(_name);
+    final resultText = choice.getResultText(currentName);
 
     showDialog(
       context: context,
@@ -592,6 +625,11 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     if (_trads >= 50.0 && !_hasShownBapts) {
       _showBaptsPopup();
     }
+
+    // Popup Parrainage si Trad's >= 10 et pas encore affiché
+    if (_trads >= 10.0 && !_hasShownParrainage) {
+      _showParrainagePopup();
+    }
   }
 
   void _scheduleNotifications() {
@@ -615,6 +653,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'energie': _energie,
         'birse': _birse,
         'trads': _trads,
+        'brousoufs': _brousoufs,
         'current_gif': _currentImage,
         'activity': _activity,
         'start_time': _startTime?.toIso8601String(),
@@ -623,10 +662,34 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'tshirt_color': ColorProcessor.colorToHex(_tshirtColor),
         'pants_color': ColorProcessor.colorToHex(_pantsColor),
         'tabagns': _tabagns,
+        'fams': _conscritFams,
         'has_shown_100_jours': _hasShown100Jours,
         'has_shown_bapts': _hasShownBapts,
+        'has_shown_parrainage': _hasShownParrainage,
+        'has_shown_prise_en_ms': _hasShownPriseEnMs,
         // last_updated est géré automatiquement par le trigger Supabase ou default now() si update classique
       });
+
+      try {
+        final bucque = user.userMetadata?['bucque']?.toString() ?? '';
+        final fams = user.userMetadata?['fams']?.toString();
+        final proms = user.userMetadata?['proms'] != null
+            ? int.tryParse(user.userMetadata!['proms'].toString())
+            : null;
+
+        await _supabase.from('profiles').upsert({
+          'id': user.id,
+          'bucque': bucque,
+          if (fams != null && fams.isNotEmpty) 'fams': fams,
+          if (_tabagns != null && _tabagns!.isNotEmpty) 'tabagns': _tabagns,
+          'proms': proms,
+          'brousoufs': _brousoufs,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      } catch (e) {
+        debugPrint('Erreur synchro brousoufs profiles: $e');
+      }
+
       _scheduleNotifications();
     } catch (e) {
       debugPrint('Erreur de sauvegarde: $e');
@@ -700,6 +763,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'pants_color': ColorProcessor.colorToHex(_pantsColor),
         'duration_seconds': seconds,
         'tabagns': _tabagns,
+        'fams': _conscritFams,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
       debugPrint('Conscrit terminé enregistré avec succès dans Supabase.');
@@ -857,7 +921,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Ton conscrit est bapt'sé ! Il peut maintenant choisir sa bucque !",
+                "Ton conscrit est bapt'sé ! On peut maintenant choisir sa bucque !",
               ),
               const SizedBox(height: 16),
               TextField(
@@ -891,13 +955,185 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     );
   }
 
+  Future<void> _showParrainagePopup() async {
+    if (!mounted) return;
+
+    // Met le conscrit au repos
+    setState(() {
+      _hasShownParrainage = true;
+      _activity = 'idle';
+      _currentImage = 'conscrit.png';
+    });
+    _timer?.cancel();
+    _saveStateToSupabase();
+
+    List<String> randomFams = [];
+    String? playerFams = _supabase.auth.currentUser?.userMetadata?['fams']?.toString();
+
+    try {
+      final response = await _supabase.from('profiles').select('fams').not('fams', 'is', null);
+      final List<dynamic> data = response as List<dynamic>;
+      final Set<String> allFams = data
+          .map((row) => row['fams']?.toString().trim())
+          .where((f) => f != null && f.isNotEmpty)
+          .cast<String>()
+          .toSet();
+
+      if (playerFams != null && playerFams.trim().isNotEmpty) {
+        allFams.remove(playerFams.trim());
+      }
+
+      final List<String> availableFams = allFams.toList()..shuffle();
+      randomFams = availableFams.take(2).toList();
+    } catch (e) {
+      debugPrint('Erreur fetch fams: $e');
+    }
+
+    if (!mounted) return;
+
+    List<String> options = [];
+    if (playerFams != null && playerFams.trim().isNotEmpty) {
+      options.add(playerFams.trim());
+    }
+    options.addAll(randomFams);
+
+    // Compléter s'il n'y a pas assez d'options
+    final defaultFamsList = ['57', '73', '101', '124', '42', '69'];
+    int i = 0;
+    while (options.length < 3) {
+      if (!options.contains(defaultFamsList[i])) {
+        options.add(defaultFamsList[i]);
+      }
+      i++;
+    }
+
+    // Mélanger pour que la fam's du joueur ne soit pas toujours la première
+    options.shuffle();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("C'est le parrainage !"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                "Ton conscrit est parrainé ! On peut maintenant choisir sa fam's !",
+              ),
+              const SizedBox(height: 16),
+              ...options.map((fam) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _conscritFams = fam;
+                    });
+                    _saveStateToSupabase();
+                    Navigator.of(context).pop();
+                    _startTimer();
+                  },
+                  child: Text("Fam's $fam"),
+                ),
+              )),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _schedulePriseEnMsPopup() {
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted && !_hasShownPriseEnMs) {
+        _showPriseEnMsPopup();
+      }
+    });
+  }
+
+  void _showPriseEnMsPopup() {
+    if (!mounted || _hasShownPriseEnMs) return;
+
+    setState(() {
+      _hasShownPriseEnMs = true;
+      _activity = 'idle';
+      _currentImage = 'conscrit.png';
+    });
+    _timer?.cancel();
+    _saveStateToSupabase();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("C'est la prise en m's !"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text("Ton conscrit est en prise en m's ! Quelle est sa réaction ?"),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _birse = (_birse + 20.0).clamp(0.0, 100.0);
+                    _energie = (_energie - 30.0).clamp(0.0, 100.0);
+                  });
+                  _saveStateToSupabase();
+                  Navigator.of(context).pop();
+                  if (_birse >= 100.0) {
+                    _showCongratulations();
+                  } else {
+                    _startTimer();
+                  }
+                },
+                child: const Text("Il est fatigué, il va retourner birser juste après.", textAlign: TextAlign.center),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _startTimer();
+                },
+                child: const Text("Il est indifférent, il va retourner dormir.", textAlign: TextAlign.center),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _trads = (_trads + 20.0).clamp(0.0, 100.0);
+                    _energie = (_energie - 30.0).clamp(0.0, 100.0);
+                  });
+                  _saveStateToSupabase();
+                  Navigator.of(context).pop();
+                  if (_birse >= 100.0) {
+                    _showCongratulations();
+                  } else {
+                    _startTimer();
+                  }
+                },
+                child: const Text("Il adore ! Il va débriefer avec ses cop's.", textAlign: TextAlign.center),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _resetState() {
     _hasSavedCompletion = false;
     setState(() {
       _hasShown100Jours = false;
       _hasShownBapts = false;
+      _hasShownParrainage = false;
+      _hasShownPriseEnMs = false;
       _name = ConscritNames.getRandomName();
       _tabagns = null;
+      _conscritFams = null;
       _energie = 100.0;
       _birse = 0.0;
       _trads = 0.0;
@@ -1109,24 +1345,93 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Haut : Titre et Jauge NRJ
+          // Haut : Titre, Monnaie Brousoufs et Jauge NRJ
           Column(
             children: [
-              const Text(
-                'Mon Conscrit',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              if (_name.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _name,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+              SizedBox(
+                width: double.infinity,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Column(
+                      children: [
+                        const Text(
+                          'Mon Conscrit',
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        if (_name.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _name,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          if (_conscritFams != null && _conscritFams!.isNotEmpty)
+                            Text(
+                              _conscritFams!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                              ),
+                            ),
+                        ],
+                      ],
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.amber.shade700, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.monetization_on, color: Colors.amber.shade700, size: 20),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$_brousoufs',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: _openCvisShop,
+                            icon: const Icon(Icons.store, size: 18),
+                            label: const Text("Cvi's"),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              minimumSize: Size.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1255,6 +1560,138 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _openCvisShop() {
+    _isEventDialogOpen = true;
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Cvi's"),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.amber.shade700, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.monetization_on, color: Colors.amber.shade700, size: 20),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_brousoufs',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                _buildShopItem(
+                  dialogContext,
+                  name: 'Biffut',
+                  icon: Icons.local_cafe,
+                  price: 1,
+                  onBuy: () {
+                    _energie = (_energie + 10).clamp(0.0, 100.0);
+                  },
+                ),
+                _buildShopItem(
+                  dialogContext,
+                  name: 'Binouze',
+                  icon: Icons.sports_bar,
+                  price: 1,
+                  onBuy: () {
+                    _activity = 'chouille';
+                    _currentImage = 'chouille.png';
+                    if (_startTime == null) _startTime = DateTime.now().toUtc();
+                  },
+                ),
+                _buildShopItem(
+                  dialogContext,
+                  name: 'Croque-zon',
+                  icon: Icons.lunch_dining,
+                  price: 2,
+                  onBuy: () {
+                    _activity = 'fins';
+                    _currentImage = 'fins.png';
+                    if (_startTime == null) _startTime = DateTime.now().toUtc();
+                  },
+                ),
+                _buildShopItem(
+                  dialogContext,
+                  name: "Tick's RU",
+                  icon: Icons.restaurant,
+                  price: 2,
+                  onBuy: () {
+                    _energie = (_energie + 20).clamp(0.0, 100.0);
+                  },
+                ),
+                _buildShopItem(
+                  dialogContext,
+                  name: 'Cours particulier',
+                  icon: Icons.supervisor_account,
+                  price: 30,
+                  onBuy: () {
+                    _birse = (_birse + 20).clamp(0.0, 100.0);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      _isEventDialogOpen = false;
+    });
+  }
+
+  Widget _buildShopItem(BuildContext dialogContext, {required String name, required IconData icon, required int price, required VoidCallback onBuy}) {
+    final bool canAfford = _brousoufs >= price;
+    return ListTile(
+      leading: Icon(icon, size: 36),
+      title: Text(name),
+      subtitle: Text('$price brousoufs'),
+      trailing: ElevatedButton(
+        onPressed: canAfford ? () {
+          setState(() {
+            _brousoufs -= price;
+            onBuy();
+          });
+          _saveStateToSupabase();
+          _checkAchievements();
+          Navigator.of(dialogContext).pop();
+        } : null,
+        child: const Text('Achat'),
       ),
     );
   }

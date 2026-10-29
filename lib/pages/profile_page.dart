@@ -19,6 +19,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final _famsController = TextEditingController();
   String? _selectedTabagns;
   final _promsController = TextEditingController();
+  final _strassController = TextEditingController();
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -42,6 +43,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _selectedTabagns = savedTabagns;
     }
     _promsController.text = metadata['proms']?.toString() ?? '';
+    _strassController.text = metadata['strass']?.toString() ?? '';
   }
 
   Future<void> _updateProfile() async {
@@ -68,6 +70,9 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     }
 
+    final strassStr = _strassController.text.trim();
+    final String? strass = strassStr.isNotEmpty ? strassStr : null;
+
     setState(() => _isLoading = true);
     try {
       final String? newEmail =
@@ -81,6 +86,7 @@ class _ProfilePageState extends State<ProfilePage> {
       updatedMetadata['fams'] = fams;
       updatedMetadata['tabagns'] = _selectedTabagns;
       updatedMetadata['proms'] = proms;
+      updatedMetadata['strass'] = strass;
 
       await supabase.auth.updateUser(UserAttributes(
         email: newEmail,
@@ -96,6 +102,7 @@ class _ProfilePageState extends State<ProfilePage> {
             'fams': fams,
             'tabagns': _selectedTabagns,
             'proms': proms,
+            'strass': strass,
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           });
         } catch (e) {
@@ -136,6 +143,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _bucqueController.dispose();
     _famsController.dispose();
     _promsController.dispose();
+    _strassController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -209,6 +217,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _strassController,
+                  decoration: const InputDecoration(
+                    labelText: 'Strass',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 const Divider(),

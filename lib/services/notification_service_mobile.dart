@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import '../constants/notification_messages.dart';
 import '../constants/stat_weights.dart';
 
 class NotificationService {
@@ -127,16 +128,26 @@ class NotificationService {
 
     final now = tz.TZDateTime.now(tz.local);
 
+    // Helper pour programmer un NotificationContent
+    Future<void> scheduleItem(
+      NotificationContent item,
+      tz.TZDateTime scheduledTime,
+    ) async {
+      await _scheduleNotification(
+        id: item.id,
+        title: item.title,
+        body: item.body(name),
+        scheduledTime: scheduledTime,
+      );
+    }
+
     // 1. Energie à 0
     if (rateEnergie < 0 && energie > 0) {
       final seconds = (energie / (-rateEnergie)).ceil();
       if (seconds > 0) {
-        final scheduledTime = now.add(Duration(seconds: seconds));
-        await _scheduleNotification(
-          id: 1,
-          title: 'Tamagonscrit',
-          body: 'Ho non ! Ton conscrit $name est épuisé !',
-          scheduledTime: scheduledTime,
+        await scheduleItem(
+          NotificationMessages.energieEpuisee,
+          now.add(Duration(seconds: seconds)),
         );
       }
     }
@@ -145,12 +156,9 @@ class NotificationService {
     if (rateBirse > 0 && birse < 50.0) {
       final seconds = ((50.0 - birse) / rateBirse).ceil();
       if (seconds > 0) {
-        final scheduledTime = now.add(Duration(seconds: seconds));
-        await _scheduleNotification(
-          id: 2,
-          title: 'C\'est les 100 jours !',
-          body: 'Ton conscrit $name obtient sa Zblanche !',
-          scheduledTime: scheduledTime,
+        await scheduleItem(
+          NotificationMessages.birse100Jours,
+          now.add(Duration(seconds: seconds)),
         );
       }
     }
@@ -159,12 +167,9 @@ class NotificationService {
     if (rateBirse > 0 && birse < 100.0) {
       final seconds = ((100.0 - birse) / rateBirse).ceil();
       if (seconds > 0) {
-        final scheduledTime = now.add(Duration(seconds: seconds));
-        await _scheduleNotification(
-          id: 3,
-          title: 'C\'est la délivrance !',
-          body: 'Ton conscrit $name obtient son Zcu !',
-          scheduledTime: scheduledTime,
+        await scheduleItem(
+          NotificationMessages.birseDelivrance,
+          now.add(Duration(seconds: seconds)),
         );
       }
     }
@@ -173,12 +178,9 @@ class NotificationService {
     if (rateTrads > 0 && trads < 50.0) {
       final seconds = ((50.0 - trads) / rateTrads).ceil();
       if (seconds > 0) {
-        final scheduledTime = now.add(Duration(seconds: seconds));
-        await _scheduleNotification(
-          id: 4,
-          title: 'C\'est le Bapt\'s !',
-          body: 'Ton conscrit $name choisit sa bucque !',
-          scheduledTime: scheduledTime,
+        await scheduleItem(
+          NotificationMessages.tradsBapts,
+          now.add(Duration(seconds: seconds)),
         );
       }
     }
@@ -187,12 +189,9 @@ class NotificationService {
     if (rateTrads > 0 && trads < 100.0) {
       final seconds = ((100.0 - trads) / rateTrads).ceil();
       if (seconds > 0) {
-        final scheduledTime = now.add(Duration(seconds: seconds));
-        await _scheduleNotification(
-          id: 5,
-          title: 'Trad\'s Master',
-          body: 'Ton conscrit $name est plus trad\'s que Gorgu !',
-          scheduledTime: scheduledTime,
+        await scheduleItem(
+          NotificationMessages.tradsMaster,
+          now.add(Duration(seconds: seconds)),
         );
       }
     }
@@ -201,12 +200,9 @@ class NotificationService {
     if (rateTrads < 0 && trads > 0) {
       final seconds = (trads / (-rateTrads)).ceil();
       if (seconds > 0) {
-        final scheduledTime = now.add(Duration(seconds: seconds));
-        await _scheduleNotification(
-          id: 6,
-          title: 'Alerte HU !',
-          body: 'Ho non ! Ton conscrit $name va se faire mettre HU !',
-          scheduledTime: scheduledTime,
+        await scheduleItem(
+          NotificationMessages.tradsAlerteHU,
+          now.add(Duration(seconds: seconds)),
         );
       }
     }

@@ -16,6 +16,7 @@ class GadzScore {
   final String? fams;
   final String? tabagns;
   final int? proms;
+  final String? strass;
   final double score;
   final String avatarState;
   final Color skinColor;
@@ -23,6 +24,7 @@ class GadzScore {
   final Color tshirtColor;
   final Color pantsColor;
   final bool isBiaudeWhite;
+  final String equippedSkin;
 
   GadzScore({
     required this.userId,
@@ -30,6 +32,7 @@ class GadzScore {
     this.fams,
     this.tabagns,
     this.proms,
+    this.strass,
     required this.score,
     this.avatarState = 'idle',
     this.skinColor = const Color(0xFFE5AA7A),
@@ -37,6 +40,7 @@ class GadzScore {
     this.tshirtColor = const Color(0xFFA8E61D),
     this.pantsColor = const Color(0xFF709AD1),
     this.isBiaudeWhite = false,
+    this.equippedSkin = 'none',
   });
 }
 
@@ -86,6 +90,7 @@ class GadzScoreTile extends StatelessWidget {
           tshirtColor: gadz.tshirtColor,
           pantsColor: gadz.pantsColor,
           isBiaudeWhite: gadz.isBiaudeWhite,
+          equippedSkin: gadz.equippedSkin,
           showBackground: false,
           spriteScale: 1.4,
           size: 42.0,
@@ -166,6 +171,7 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
   Color _avatarTshirtColor = const Color(0xFFA8E61D);
   Color _avatarPantsColor = const Color(0xFF709AD1);
   bool _avatarIsBiaudeWhite = false;
+  String _avatarEquippedSkin = 'none';
   String? _avatarTabagns;
 
   @override
@@ -185,7 +191,7 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
       try {
         final profileRes = await _supabase
             .from('profiles')
-            .select('tabagns, avatar_state, avatar_skin_color, avatar_hair_color, avatar_tshirt_color, avatar_pants_color, avatar_is_biaude_white')
+            .select('tabagns, avatar_state, avatar_skin_color, avatar_hair_color, avatar_tshirt_color, avatar_pants_color, avatar_is_biaude_white, avatar_equipped_skin')
             .eq('id', widget.gadz.userId)
             .maybeSingle();
 
@@ -210,6 +216,9 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
           }
           if (profileRes['avatar_is_biaude_white'] != null) {
             _avatarIsBiaudeWhite = profileRes['avatar_is_biaude_white'] as bool;
+          }
+          if (profileRes['avatar_equipped_skin'] != null) {
+            _avatarEquippedSkin = profileRes['avatar_equipped_skin'].toString();
           }
         }
       } catch (e) {
@@ -285,11 +294,16 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
     final imageBytes = _imageCache[cacheKey];
     final String name = (conscrit['name'] as String?) ?? '';
     final String conscritTabagns = (conscrit['tabagns'] as String?) ?? '';
+    final String conscritFams = (conscrit['fams'] as String?) ?? '';
     final int seniority = conscrit['seniority'] as int? ?? 1;
 
     List<String> parts = [];
     if (name.isNotEmpty) parts.add(name);
-    if (widget.gadz.fams != null && widget.gadz.fams!.isNotEmpty) parts.add(widget.gadz.fams!);
+    if (conscritFams.isNotEmpty) {
+      parts.add(conscritFams);
+    } else if (widget.gadz.fams != null && widget.gadz.fams!.isNotEmpty) {
+      parts.add(widget.gadz.fams!);
+    }
     if (conscritTabagns.isNotEmpty) {
       parts.add('$conscritTabagns$seniority');
     } else {
@@ -405,6 +419,7 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
                               tshirtColor: _avatarTshirtColor,
                               pantsColor: _avatarPantsColor,
                               isBiaudeWhite: _avatarIsBiaudeWhite,
+                              equippedSkin: _avatarEquippedSkin,
                               size: 240,
                             ),
                             if (isMe)
@@ -469,6 +484,18 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
   }
 }
 
+class FamsScore {
+  final String fams;
+  final double score;
+  final int playerCount;
+
+  FamsScore({
+    required this.fams,
+    required this.score,
+    required this.playerCount,
+  });
+}
+
 class TabagnsScore {
   final String tabagns;
   final double score;
@@ -488,6 +515,18 @@ class PromsScore {
 
   PromsScore({
     required this.proms,
+    required this.score,
+    required this.playerCount,
+  });
+}
+
+class StrassScore {
+  final String strass;
+  final double score;
+  final int playerCount;
+
+  StrassScore({
+    required this.strass,
     required this.score,
     required this.playerCount,
   });
@@ -539,8 +578,10 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   String? _errorMessage;
 
   List<GadzScore> _gadzScores = [];
+  List<FamsScore> _famsScores = [];
   List<TabagnsScore> _tabagnsScores = [];
   List<PromsScore> _promsScores = [];
+  List<StrassScore> _strassScores = [];
   List<PromsEvenOddScore> _promsEvenOddScores = [];
   List<PgJpTvaScore> _pgJpTvaScores = [];
 
@@ -629,6 +670,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
             'fams': meta['fams']?.toString().trim(),
             'tabagns': meta['tabagns']?.toString().trim(),
             'proms': meta['proms'] != null ? int.tryParse(meta['proms'].toString()) : null,
+            'strass': meta['strass']?.toString().trim(),
           };
         }
       }
@@ -669,6 +711,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
         final fams = profile?['fams']?.toString().trim();
         final tabagns = profile?['tabagns']?.toString().trim();
+        final strass = profile?['strass']?.toString().trim();
 
         int? proms;
         if (profile?['proms'] != null) {
@@ -685,6 +728,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         final tshirtHex = profile?['avatar_tshirt_color']?.toString();
         final pantsHex = profile?['avatar_pants_color']?.toString();
         final isBiaudeWhite = profile?['avatar_is_biaude_white'] as bool? ?? false;
+        final equippedSkin = profile?['avatar_equipped_skin']?.toString() ?? 'none';
 
         final skinColor = ColorProcessor.colorFromHex(skinHex, fallback: const Color(0xFFE5AA7A));
         final hairColor = ColorProcessor.colorFromHex(hairHex, fallback: const Color(0xFF9C5A3C));
@@ -697,6 +741,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           fams: fams?.isNotEmpty == true ? fams : null,
           tabagns: tabagns?.isNotEmpty == true ? tabagns : null,
           proms: proms,
+          strass: strass?.isNotEmpty == true ? strass : null,
           score: score,
           avatarState: avatarState,
           skinColor: skinColor,
@@ -704,11 +749,33 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           tshirtColor: tshirtColor,
           pantsColor: pantsColor,
           isBiaudeWhite: isBiaudeWhite,
+          equippedSkin: equippedSkin,
         ));
       }
 
       // Tri des gadz par score décroissant
       gadzList.sort((a, b) => b.score.compareTo(a.score));
+
+      // Aggrégation par Fam's
+      final Map<String, _AggregatedStat> famsAgg = {};
+      for (var g in gadzList) {
+        if (g.fams != null && g.fams!.isNotEmpty) {
+          final f = g.fams!;
+          famsAgg.putIfAbsent(f, () => _AggregatedStat());
+          famsAgg[f]!.score += g.score;
+          famsAgg[f]!.count += 1;
+        }
+      }
+
+      final List<FamsScore> famsList = famsAgg.entries.map((entry) {
+        return FamsScore(
+          fams: entry.key,
+          score: entry.value.score,
+          playerCount: entry.value.count,
+        );
+      }).toList();
+
+      famsList.sort((a, b) => b.score.compareTo(a.score));
 
       // 4. Aggrégation par Tabagn's
       final Map<String, _AggregatedStat> tabagnsAgg = {};
@@ -751,6 +818,27 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       }).toList();
 
       promsList.sort((a, b) => b.score.compareTo(a.score));
+
+      // 5.5 Aggrégation par Strass
+      final Map<String, _AggregatedStat> strassAgg = {};
+      for (var g in gadzList) {
+        if (g.strass != null && g.strass!.isNotEmpty) {
+          final s = g.strass!;
+          strassAgg.putIfAbsent(s, () => _AggregatedStat());
+          strassAgg[s]!.score += g.score;
+          strassAgg[s]!.count += 1;
+        }
+      }
+
+      final List<StrassScore> strassList = strassAgg.entries.map((entry) {
+        return StrassScore(
+          strass: entry.key,
+          score: entry.value.score,
+          playerCount: entry.value.count,
+        );
+      }).toList();
+
+      strassList.sort((a, b) => b.score.compareTo(a.score));
 
       // 6. Aggrégation par Prom's paires vs impaires
       double evenScore = 0.0;
@@ -840,8 +928,10 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       if (mounted) {
         setState(() {
           _gadzScores = gadzList;
+          _famsScores = famsList;
           _tabagnsScores = tabagnsList;
           _promsScores = promsList;
+          _strassScores = strassList;
           _promsEvenOddScores = promsEvenOddList;
           _pgJpTvaScores = pgJpTvaList;
           _isLoading = false;
@@ -968,6 +1058,79 @@ class _LeaderboardPageState extends State<LeaderboardPage>
             gadz: item,
             leading: _buildRankWidget(index),
             isMe: isMe,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTopFamsView() {
+    if (_famsScores.isEmpty) {
+      return const Center(
+        child: Text(
+          "Aucune fam's enregistrée.",
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
+          (g) => g?.userId == currentUserId,
+          orElse: () => null,
+        );
+    final myFams = myGadz?.fams;
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: _famsScores.length,
+      itemBuilder: (context, index) {
+        final item = _famsScores[index];
+        final isMyFams = myFams != null && myFams.isNotEmpty && myFams == item.fams;
+
+        final famsGroup = item.fams;
+        final groupPlayers = _gadzScores.where((g) => g.fams == famsGroup).toList();
+        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: isMyFams ? 3 : 1,
+          color: isMyFams ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+          child: InkWell(
+            onTap: () => _showGroupPlayersDialog(item.fams, groupPlayers),
+            child: ListTile(
+              leading: _buildRankWidget(index),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.fams,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                  if (isMyFams)
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              trailing: Text(
+                '${_formatScore(item.score)} Trad\'s',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
           ),
         );
       },
@@ -1118,6 +1281,79 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTopStrassView() {
+    if (_strassScores.isEmpty) {
+      return const Center(
+        child: Text(
+          "Aucune strass enregistré.",
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
+          (g) => g?.userId == currentUserId,
+          orElse: () => null,
+        );
+    final myStrass = myGadz?.strass;
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: _strassScores.length,
+      itemBuilder: (context, index) {
+        final item = _strassScores[index];
+        final isMyStrass = myStrass != null && myStrass.isNotEmpty && myStrass == item.strass;
+
+        final strassGroup = item.strass;
+        final groupPlayers = _gadzScores.where((g) => g.strass == strassGroup).toList();
+        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: isMyStrass ? 3 : 1,
+          color: isMyStrass ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+          child: InkWell(
+            onTap: () => _showGroupPlayersDialog(item.strass, groupPlayers),
+            child: ListTile(
+              leading: _buildRankWidget(index),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.strass,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                  if (isMyStrass)
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              trailing: Text(
+                '${_formatScore(item.score)} Trad\'s',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 
@@ -1330,7 +1566,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     }
 
     return DefaultTabController(
-      length: 5,
+      length: 7,
       child: Column(
         children: [
           const Padding(
@@ -1348,12 +1584,20 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                 text: 'Top gadz',
               ),
               Tab(
-                icon: Icon(Icons.location_city),
-                text: 'Top tabagn\'s',
+                icon: Icon(Icons.family_restroom),
+                text: 'Top fam\'s',
               ),
               Tab(
                 icon: Icon(Icons.school),
                 text: 'Top prom\'s',
+              ),
+              Tab(
+                icon: Icon(Icons.location_city),
+                text: 'Top tabagn\'s',
+              ),
+              Tab(
+                icon: Icon(Icons.group),
+                text: 'Top strass',
               ),
               Tab(
                 icon: Icon(Icons.percent),
@@ -1371,8 +1615,10 @@ class _LeaderboardPageState extends State<LeaderboardPage>
               child: TabBarView(
                 children: [
                   _buildTopGadzView(),
-                  _buildTopTabagnsView(),
+                  _buildTopFamsView(),
                   _buildTopPromsView(),
+                  _buildTopTabagnsView(),
+                  _buildTopStrassView(),
                   _buildTopPromsEvenOddView(),
                   _buildPgJpTvaView(),
                 ],

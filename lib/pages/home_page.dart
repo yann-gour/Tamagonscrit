@@ -67,6 +67,7 @@ class _HomePageState extends State<HomePage> {
       final avatarHair = metadata['avatar_hair_color']?.toString();
       final avatarTshirt = metadata['avatar_tshirt_color']?.toString();
       final avatarPants = metadata['avatar_pants_color']?.toString();
+      final avatarEquippedSkin = metadata['avatar_equipped_skin']?.toString();
 
       if (bucque != null && bucque.isNotEmpty) {
         final profileMap = <String, dynamic>{
@@ -82,6 +83,7 @@ class _HomePageState extends State<HomePage> {
         if (avatarHair != null) profileMap['avatar_hair_color'] = avatarHair;
         if (avatarTshirt != null) profileMap['avatar_tshirt_color'] = avatarTshirt;
         if (avatarPants != null) profileMap['avatar_pants_color'] = avatarPants;
+        if (avatarEquippedSkin != null) profileMap['avatar_equipped_skin'] = avatarEquippedSkin;
 
         await Supabase.instance.client.from('profiles').upsert(profileMap);
       }

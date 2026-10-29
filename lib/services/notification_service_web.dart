@@ -2,6 +2,7 @@ import 'package:web/web.dart' as web;
 import 'dart:js_interop';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import '../constants/notification_messages.dart';
 import '../constants/stat_weights.dart';
 
 class NotificationService {
@@ -114,11 +115,11 @@ class NotificationService {
     final rateBirse = rates['birse'] ?? 0.0;
     final rateTrads = rates['trads'] ?? 0.0;
 
-    void scheduleWebNotification(int seconds, String title, String body) {
+    void scheduleWebItem(int seconds, NotificationContent item) {
       if (seconds <= 0) return;
       final timer = Timer(Duration(seconds: seconds), () {
         if (_hasNotification && web.Notification.permission == 'granted') {
-          web.Notification(title, web.NotificationOptions(body: body));
+          web.Notification(item.title, web.NotificationOptions(body: item.body(name)));
         }
       });
       _activeTimers.add(timer);
@@ -127,37 +128,37 @@ class NotificationService {
     // 1. Energie à 0
     if (rateEnergie < 0 && energie > 0) {
       final seconds = (energie / (-rateEnergie)).ceil();
-      scheduleWebNotification(seconds, 'Tamagonscrit', 'Ho non ! Ton conscrit $name est épuisé !');
+      scheduleWebItem(seconds, NotificationMessages.energieEpuisee);
     }
 
     // 2. Birse à 50
     if (rateBirse > 0 && birse < 50.0) {
       final seconds = ((50.0 - birse) / rateBirse).ceil();
-      scheduleWebNotification(seconds, 'C\'est les 100 jours !', 'Ton conscrit $name obtient sa Zblanche !');
+      scheduleWebItem(seconds, NotificationMessages.birse100Jours);
     }
 
     // 3. Birse à 100
     if (rateBirse > 0 && birse < 100.0) {
       final seconds = ((100.0 - birse) / rateBirse).ceil();
-      scheduleWebNotification(seconds, 'C\'est la délivrance !', 'Ton conscrit $name obtient son Zcu !');
+      scheduleWebItem(seconds, NotificationMessages.birseDelivrance);
     }
 
     // 4. Trad's à 50
     if (rateTrads > 0 && trads < 50.0) {
       final seconds = ((50.0 - trads) / rateTrads).ceil();
-      scheduleWebNotification(seconds, 'C\'est le Bapt\'s !', 'Ton conscrit $name choisit sa bucque !');
+      scheduleWebItem(seconds, NotificationMessages.tradsBapts);
     }
 
     // 5. Trad's à 100
     if (rateTrads > 0 && trads < 100.0) {
       final seconds = ((100.0 - trads) / rateTrads).ceil();
-      scheduleWebNotification(seconds, 'Trad\'s Master', 'Ton conscrit $name est plus trad\'s que Gorgu !');
+      scheduleWebItem(seconds, NotificationMessages.tradsMaster);
     }
 
     // 6. Trad's à 0
     if (rateTrads < 0 && trads > 0) {
       final seconds = (trads / (-rateTrads)).ceil();
-      scheduleWebNotification(seconds, 'Alerte HU !', 'Ho non ! Ton conscrit $name va se faire mettre HU !');
+      scheduleWebItem(seconds, NotificationMessages.tradsAlerteHU);
     }
   }
 }
