@@ -3,12 +3,14 @@ class SkinItem {
   final String name;
   final int zloeilsPrice;
   final String? assetPath;
+  final bool isRecolored;
 
   const SkinItem({
     required this.id,
     required this.name,
     required this.zloeilsPrice,
     this.assetPath,
+    this.isRecolored = false,
   });
 }
 
@@ -32,6 +34,62 @@ class AvatarSkins {
       name: 'Bâche verte',
       zloeilsPrice: 10,
       assetPath: 'assets/skin_bache_verte.png',
+    ),
+    SkinItem(
+      id: 'bache_perso',
+      name: 'Bâche perso',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_bache_perso.png',
+      isRecolored: true,
+    ),
+    SkinItem(
+      id: 'cache_boule_perso',
+      name: 'Cache boule perso',
+      zloeilsPrice: 30,
+      assetPath: 'assets/skin_cache_boule_perso.png',
+      isRecolored: true,
+    ),
+    SkinItem(
+      id: 'cache_boule_ai',
+      name: 'Cache boule (Ai)',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_cache_boule_ai.png',
+    ),
+    SkinItem(
+      id: 'cache_boule_an',
+      name: 'Cache boule (An)',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_cache_boule_an.png',
+    ),
+    SkinItem(
+      id: 'cache_boule_bo',
+      name: 'Cache boule (Bo)',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_cache_boule_bo.png',
+    ),
+    SkinItem(
+      id: 'cache_boule_ch',
+      name: 'Cache boule (Ch)',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_cache_boule_ch.png',
+    ),
+    SkinItem(
+      id: 'cache_boule_cl',
+      name: 'Cache boule (Cl)',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_cache_boule_cl.png',
+    ),
+    SkinItem(
+      id: 'cache_boule_li',
+      name: 'Cache boule (Li)',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_cache_boule_li.png',
+    ),
+    SkinItem(
+      id: 'cache_boule_me',
+      name: 'Cache boule (Me)',
+      zloeilsPrice: 20,
+      assetPath: 'assets/skin_cache_boule_me.png',
     ),
     SkinItem(
       id: 'equerre',

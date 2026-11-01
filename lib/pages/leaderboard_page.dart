@@ -77,70 +77,93 @@ class GadzScoreTile extends StatelessWidget {
       line2Text = "${gadz.proms}";
     }
 
-    final leadingWidget = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        leading ?? const SizedBox.shrink(),
-        const SizedBox(width: 8),
-        AvatarConscritWidget(
-          tabagns: gadz.tabagns,
-          state: gadz.avatarState,
-          skinColor: gadz.skinColor,
-          hairColor: gadz.hairColor,
-          tshirtColor: gadz.tshirtColor,
-          pantsColor: gadz.pantsColor,
-          isBiaudeWhite: gadz.isBiaudeWhite,
-          equippedSkin: gadz.equippedSkin,
-          showBackground: false,
-          spriteScale: 1.4,
-          size: 42.0,
-        ),
-      ],
-    );
-
-    return ListTile(
-      leading: leadingWidget,
+    return InkWell(
       onTap: onTap ?? () {
         showDialog(
           context: context,
           builder: (context) => PlayerMonomeDialog(gadz: gadz),
         );
       },
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              line1Text,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+        child: Row(
+          children: [
+            if (leading != null) ...[
+              leading!,
+              const SizedBox(width: 6),
+            ],
+            AvatarConscritWidget(
+              tabagns: gadz.tabagns,
+              state: gadz.avatarState,
+              skinColor: gadz.skinColor,
+              hairColor: gadz.hairColor,
+              tshirtColor: gadz.tshirtColor,
+              pantsColor: gadz.pantsColor,
+              isBiaudeWhite: gadz.isBiaudeWhite,
+              equippedSkin: gadz.equippedSkin,
+              showBackground: false,
+              spriteScale: 1.3,
+              size: 38.0,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          line1Text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      if (isMe)
+                        Container(
+                          margin: const EdgeInsets.only(left: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            "phy's",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (line2Text != null)
+                    Text(
+                      line2Text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              "${_formatScore(gadz.score)} Trad's",
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 15,
+                color: Colors.orange,
               ),
             ),
-          ),
-          if (isMe)
-            Container(
-              margin: const EdgeInsets.only(left: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-        ],
-      ),
-      subtitle: line2Text != null
-          ? Text(
-              line2Text,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            )
-          : null,
-      trailing: Text(
-        "${_formatScore(gadz.score)} Trad's",
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-          color: Colors.orange,
+          ],
         ),
       ),
     );
@@ -379,7 +402,8 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
     details.add("${widget.gadz.score.round()} Trad's");
 
     return AlertDialog(
-      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 24.0),
+      contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -968,6 +992,9 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       context: context,
       builder: (context) {
         return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 24.0),
+          contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           title: Text(dialogTitle),
           content: SizedBox(
             width: double.maxFinite,
@@ -981,7 +1008,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                       return GadzScoreTile(
                         gadz: player,
                         leading: CircleAvatar(
-                          child: Text('#${index + 1}', style: const TextStyle(fontSize: 12)),
+                          radius: 14,
+                          child: Text('#${index + 1}', style: const TextStyle(fontSize: 11)),
                         ),
                         isMe: player.userId == currentUserId,
                       );
@@ -1006,29 +1034,33 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   Widget _buildRankWidget(int index) {
     if (index == 0) {
       return const CircleAvatar(
+        radius: 15,
         backgroundColor: Color(0xFFFFD700), // Or
         foregroundColor: Colors.black,
-        child: Text('🥇', style: TextStyle(fontSize: 20)),
+        child: Text('🥇', style: TextStyle(fontSize: 16)),
       );
     } else if (index == 1) {
       return const CircleAvatar(
+        radius: 15,
         backgroundColor: Color(0xFFC0C0C0), // Argent
         foregroundColor: Colors.black,
-        child: Text('🥈', style: TextStyle(fontSize: 20)),
+        child: Text('🥈', style: TextStyle(fontSize: 16)),
       );
     } else if (index == 2) {
       return const CircleAvatar(
+        radius: 15,
         backgroundColor: Color(0xFFCD7F32), // Bronze
         foregroundColor: Colors.white,
-        child: Text('🥉', style: TextStyle(fontSize: 20)),
+        child: Text('🥉', style: TextStyle(fontSize: 16)),
       );
     }
     return CircleAvatar(
+      radius: 15,
       backgroundColor: Colors.grey.shade200,
       foregroundColor: Colors.black87,
       child: Text(
         '#${index + 1}',
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
       ),
     );
   }

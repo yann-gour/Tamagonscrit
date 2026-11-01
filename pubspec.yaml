@@ -102,6 +102,15 @@ flutter:
     - assets/skin_bache_verte.png
     - assets/skin_fignos.png
     - assets/skin_craps.png
+    - assets/skin_bache_perso.png
+    - assets/skin_cache_boule_perso.png
+    - assets/skin_cache_boule_ai.png
+    - assets/skin_cache_boule_an.png
+    - assets/skin_cache_boule_bo.png
+    - assets/skin_cache_boule_ch.png
+    - assets/skin_cache_boule_cl.png
+    - assets/skin_cache_boule_li.png
+    - assets/skin_cache_boule_me.png
     - assets/bacchus.mp3
     - assets/disparus.mp3
     - assets/ecole.mp3

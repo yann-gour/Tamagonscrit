@@ -546,13 +546,9 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 6,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 0.95,
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
                           _buildElementPickerTile(
                             title: 'Peau',

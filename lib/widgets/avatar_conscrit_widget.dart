@@ -83,28 +83,57 @@ class _AvatarConscritWidgetState extends State<AvatarConscritWidget> {
     _loadSkinBytes(widget.equippedSkin);
   }
 
+  String _getSkinCacheKey(SkinItem skin) {
+    if (skin.isRecolored) {
+      final skinHex = ColorProcessor.colorToHex(widget.skinColor);
+      final hairHex = ColorProcessor.colorToHex(widget.hairColor);
+      final tshirtHex = ColorProcessor.colorToHex(widget.tshirtColor);
+      final pantsHex = ColorProcessor.colorToHex(widget.pantsColor);
+      return '${skin.id}_${skinHex}_${hairHex}_${tshirtHex}_${pantsHex}_${widget.isBiaudeWhite}';
+    }
+    return skin.id;
+  }
+
   @override
   void didUpdateWidget(AvatarConscritWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.state != widget.state ||
-        oldWidget.skinColor != widget.skinColor ||
+    final colorsChanged = oldWidget.skinColor != widget.skinColor ||
         oldWidget.hairColor != widget.hairColor ||
         oldWidget.tshirtColor != widget.tshirtColor ||
         oldWidget.pantsColor != widget.pantsColor ||
-        oldWidget.isBiaudeWhite != widget.isBiaudeWhite) {
+        oldWidget.isBiaudeWhite != widget.isBiaudeWhite;
+
+    if (oldWidget.state != widget.state || colorsChanged) {
       _processAvatarImage();
     }
-    if (oldWidget.equippedSkin != widget.equippedSkin) {
+    if (oldWidget.equippedSkin != widget.equippedSkin || colorsChanged) {
       _loadSkinBytes(widget.equippedSkin);
     }
   }
 
   Future<void> _loadSkinBytes(String skinId) async {
     final skin = AvatarSkins.getSkin(skinId);
-    if (skin.assetPath == null || _skinBytesCache.containsKey(skin.id)) return;
+    if (skin.assetPath == null) return;
+    final cacheKey = _getSkinCacheKey(skin);
+    if (_skinBytesCache.containsKey(cacheKey)) return;
+
     try {
-      final data = await rootBundle.load(skin.assetPath!);
-      _skinBytesCache[skin.id] = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      if (skin.isRecolored) {
+        final processed = await ColorProcessor.processImage(
+          assetPath: skin.assetPath!,
+          newSkinColor: widget.skinColor,
+          newHairColor: widget.hairColor,
+          newTshirtColor: widget.tshirtColor,
+          newPantsColor: widget.pantsColor,
+          isBiaudeWhite: widget.isBiaudeWhite,
+        );
+        if (processed != null) {
+          _skinBytesCache[cacheKey] = processed;
+        }
+      } else {
+        final data = await rootBundle.load(skin.assetPath!);
+        _skinBytesCache[cacheKey] = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      }
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Erreur lors du chargement du skin $skinId : $e');
@@ -173,6 +202,7 @@ class _AvatarConscritWidgetState extends State<AvatarConscritWidget> {
         : 'assets/fond.png';
 
     final activeSkin = AvatarSkins.getSkin(widget.equippedSkin);
+    final activeSkinCacheKey = activeSkin.assetPath != null ? _getSkinCacheKey(activeSkin) : null;
 
     return Container(
       width: widget.size,
@@ -217,10 +247,10 @@ class _AvatarConscritWidgetState extends State<AvatarConscritWidget> {
                           const Icon(Icons.person, color: Colors.grey),
 
                         // Superposition du skin
-                        if (activeSkin.assetPath != null &&
-                            _skinBytesCache[activeSkin.id] != null)
+                        if (activeSkinCacheKey != null &&
+                            _skinBytesCache[activeSkinCacheKey] != null)
                           SpriteSheetAnimator(
-                            imageBytes: _skinBytesCache[activeSkin.id]!,
+                            imageBytes: _skinBytesCache[activeSkinCacheKey]!,
                             frameCount: 2,
                             frameDuration: const Duration(milliseconds: 600),
                             width: widget.size * widget.spriteScale,
