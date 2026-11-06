@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'conscrit_page.dart';
 import 'monome_page.dart';
 import 'profile_page.dart';
 import 'leaderboard_page.dart';
 import 'carns_page.dart';
 import '../services/achievement_service.dart';
+import '../models/announcement.dart';
 
 final ValueNotifier<int> homeTabNotifier = ValueNotifier<int>(0);
 
@@ -23,8 +25,9 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     homeTabNotifier.addListener(_onHomeTabNotified);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _checkBucqueOnStartup();
+      await _checkAnnouncementsOnStartup();
     });
   }
 
@@ -53,6 +56,52 @@ class _HomePageState extends State<HomePage> {
     } else {
       _syncProfileOnStartup(user.id, metadata);
     }
+  }
+
+  Future<void> _checkAnnouncementsOnStartup() async {
+    if (!mounted) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      final lastAnnouncementDate = prefs.getString('last_announcement_date');
+      if (lastAnnouncementDate == todayStr) return;
+
+      final activeAnnouncements = allAnnouncements.where((a) => a.isActiveAt(now)).toList();
+      if (activeAnnouncements.isEmpty) return;
+
+      await prefs.setString('last_announcement_date', todayStr);
+
+      for (final announcement in activeAnnouncements) {
+        if (!mounted) break;
+        await _showAnnouncementDialog(announcement);
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification des annonces: $e');
+    }
+  }
+
+  Future<void> _showAnnouncementDialog(Announcement announcement) async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(announcement.title),
+          content: Text(
+            announcement.text,
+            style: const TextStyle(fontSize: 15),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _syncProfileOnStartup(String userId, Map<String, dynamic> metadata) async {

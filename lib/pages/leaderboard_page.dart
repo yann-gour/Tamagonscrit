@@ -359,11 +359,11 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
                 ),
           if (name.isNotEmpty)
             Positioned(
-              bottom: 4,
+              bottom: 2,
               left: 2,
               right: 2,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(4),
@@ -375,7 +375,7 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
+                    fontSize: 8,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -482,16 +482,21 @@ class _PlayerMonomeDialogState extends State<PlayerMonomeDialog> {
                                   style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                                 ),
                               )
-                            : GridView.builder(
-                                itemCount: _conscrits.length,
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 0,
-                                  mainAxisSpacing: 0,
-                                  childAspectRatio: 950.0 / 1600.0,
-                                ),
-                                itemBuilder: (context, index) {
-                                  return _buildConscritTile(_conscrits[index]);
+                            : LayoutBuilder(
+                                builder: (context, constraints) {
+                                  int crossAxisCount = constraints.maxWidth > 300 ? 5 : 4;
+                                  return GridView.builder(
+                                    itemCount: _conscrits.length,
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: crossAxisCount,
+                                      crossAxisSpacing: 2,
+                                      mainAxisSpacing: 2,
+                                      childAspectRatio: 950.0 / 1600.0,
+                                    ),
+                                    itemBuilder: (context, index) {
+                                      return _buildConscritTile(_conscrits[index]);
+                                    },
+                                  );
                                 },
                               ),
                       ),

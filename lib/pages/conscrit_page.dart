@@ -57,6 +57,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   Timer? _timer;
   bool _isEventDialogOpen = false;
   DateTime? _lastEventTime;
+  String? _lastHeureTradDate;
+  bool _is508Rotated = false;
+  String? _last508DateTriggered;
   final Random _random = Random();
 
   static const Map<String, String> tabagnsFullNames = {
@@ -421,6 +424,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         if (_birse >= 100.0) {
           _showCongratulations();
         } else {
+          _checkHeureTradEvent();
+          _check508Event();
           _checkRandomEvent();
         }
       });
@@ -432,6 +437,39 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     final route = ModalRoute.of(context);
     if (route != null && !route.isCurrent) return false;
     return true;
+  }
+
+  void _checkHeureTradEvent() {
+    if (!_isPageVisible || _isEventDialogOpen || _birse >= 100.0 || _isLoading || _isProcessingImages) return;
+    if (_tabagns == null || _tabagns!.isEmpty) return;
+
+    final config = tabagnsHeureTrad[_tabagns];
+    if (config == null) return;
+
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month}-${now.day}';
+
+    if (_lastHeureTradDate == todayStr) return;
+
+    if (now.hour == config.targetHour && now.minute == config.targetMinute) {
+      _lastHeureTradDate = todayStr;
+      final event = createHeureTradEvent(config.timeDisplay);
+      _showEventDialog(event);
+    }
+  }
+
+  void _check508Event() {
+    if (!_isPageVisible || _isEventDialogOpen || _birse >= 100.0 || _isLoading || _isProcessingImages) return;
+
+    final now = DateTime.now();
+    final slotKey = '${now.year}-${now.month}-${now.day}-${now.hour}:${now.minute}';
+
+    if (_last508DateTriggered == slotKey) return;
+
+    if ((now.hour == 5 || now.hour == 17) && now.minute == 8) {
+      _last508DateTriggered = slotKey;
+      _showEventDialog(event508);
+    }
   }
 
   void _checkRandomEvent() {
@@ -531,6 +569,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       );
 
       choice.applyEffect(effectContext);
+      if (event.id == '508') {
+        _is508Rotated = true;
+      }
       _checkAchievements();
     });
 
@@ -1486,36 +1527,39 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.black12, width: 2),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Image de fond
-                      Image.asset(
-                        (_tabagns != null && _tabagns!.isNotEmpty)
-                            ? 'assets/fond_${_tabagns!.toLowerCase()}.png'
-                            : 'assets/fond.png',
-                        fit: BoxFit.cover, // Remplit complètement le cadre
-                        filterQuality: FilterQuality.none,
-                      ),
-                      // GIF du Conscrit par-dessus
-                      Center(
-                        child: _isProcessingImages
-                            ? const CircularProgressIndicator()
-                            : _imageCache[_currentImage] != null
-                                ? SpriteSheetAnimator(
-                                    // Utilisation de l'image cachée
-                                    imageBytes: _imageCache[_currentImage]!,
-                                    frameCount: 2,
-                                    frameDuration:
-                                        const Duration(milliseconds: 600),
-                                    width: 120,
-                                    height: 120,
-                                  )
-                                : const Icon(Icons.error, color: Colors.red),
-                      ),
-                    ],
+                child: RotatedBox(
+                  quarterTurns: _is508Rotated ? 2 : 0,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Image de fond
+                        Image.asset(
+                          (_tabagns != null && _tabagns!.isNotEmpty)
+                              ? 'assets/fond_${_tabagns!.toLowerCase()}.png'
+                              : 'assets/fond.png',
+                          fit: BoxFit.cover, // Remplit complètement le cadre
+                          filterQuality: FilterQuality.none,
+                        ),
+                        // GIF du Conscrit par-dessus
+                        Center(
+                          child: _isProcessingImages
+                              ? const CircularProgressIndicator()
+                              : _imageCache[_currentImage] != null
+                                  ? SpriteSheetAnimator(
+                                      // Utilisation de l'image cachée
+                                      imageBytes: _imageCache[_currentImage]!,
+                                      frameCount: 2,
+                                      frameDuration:
+                                          const Duration(milliseconds: 600),
+                                      width: 120,
+                                      height: 120,
+                                    )
+                                  : const Icon(Icons.error, color: Colors.red),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

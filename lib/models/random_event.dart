@@ -187,3 +187,59 @@ final List<RandomEvent> allRandomEvents = [
   finsEvent,
   brousoufsEvent,
 ];
+
+class HeureTradConfig {
+  final String timeDisplay;
+  final int targetHour;
+  final int targetMinute;
+
+  const HeureTradConfig({
+    required this.timeDisplay,
+    required this.targetHour,
+    required this.targetMinute,
+  });
+}
+
+final Map<String, HeureTradConfig> tabagnsHeureTrad = const {
+  'Li': HeureTradConfig(timeDisplay: '19h00', targetHour: 19, targetMinute: 0),
+  'An': HeureTradConfig(timeDisplay: '18h15', targetHour: 18, targetMinute: 15),
+  'Bo': HeureTradConfig(timeDisplay: '19h63', targetHour: 20, targetMinute: 3),
+  'Ch': HeureTradConfig(timeDisplay: '18h06', targetHour: 18, targetMinute: 6),
+  'Cl': HeureTradConfig(timeDisplay: '18h91', targetHour: 19, targetMinute: 31),
+  'Ai': HeureTradConfig(timeDisplay: '18h43', targetHour: 18, targetMinute: 43),
+  'Me': HeureTradConfig(timeDisplay: '19h97', targetHour: 20, targetMinute: 37),
+};
+
+RandomEvent createHeureTradEvent(String timeDisplay) {
+  return RandomEvent(
+    id: 'heure_trad',
+    title: "Heure trad's !",
+    getDescription: (name) =>
+        "Il est $timeDisplay c'est l'heure trad's du tabagn's de $name !",
+    choices: [
+      EventChoice(
+        label: 'Célébrer l\'heure trad\'s !',
+        getResultText: (name) =>
+            '$name a célébré l\'heure trad\'s et passe immédiatement à 100 trad\'s !',
+        applyEffect: (context) {
+          context.addTrads(100.0);
+        },
+      ),
+    ],
+  );
+}
+
+final RandomEvent event508 = RandomEvent(
+  id: '508',
+  title: "C'est les 508 !",
+  getDescription: (name) => "5h08 c'est les 508 !",
+  choices: [
+    EventChoice(
+      label: '508 !',
+      getResultText: (name) => "5h08 c'est les 508 ! Le conscrit a la tête à l'envers !",
+      applyEffect: (context) {},
+    ),
+  ],
+);
+
+
