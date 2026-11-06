@@ -8,6 +8,146 @@ import '../widgets/avatar_conscrit_widget.dart';
 import 'home_page.dart' show homeTabNotifier;
 import 'monome_page.dart' show monomeRefreshNotifier;
 
+class ProfileFieldEditor extends StatefulWidget {
+  final String label;
+  final String? initialValue;
+  final Future<void> Function(String?) onSave;
+  final bool isNumber;
+  final List<String>? dropdownItems;
+  final String? dropdownHint;
+
+  const ProfileFieldEditor({
+    super.key,
+    required this.label,
+    this.initialValue,
+    required this.onSave,
+    this.isNumber = false,
+    this.dropdownItems,
+    this.dropdownHint,
+  });
+
+  @override
+  State<ProfileFieldEditor> createState() => _ProfileFieldEditorState();
+}
+
+class _ProfileFieldEditorState extends State<ProfileFieldEditor> {
+  late TextEditingController _controller;
+  String? _selectedValue;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue ?? '');
+    _selectedValue = widget.initialValue;
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileFieldEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialValue != widget.initialValue) {
+      if (widget.dropdownItems == null) {
+        _controller.text = widget.initialValue ?? '';
+      } else {
+        _selectedValue = widget.initialValue;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    setState(() => _isLoading = true);
+    try {
+      final value = widget.dropdownItems != null ? _selectedValue : _controller.text.trim();
+      await widget.onSave(value);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mise à jour réussie.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur lors de la mise à jour.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: widget.dropdownItems != null
+                  ? DropdownButtonFormField<String>(
+                      value: widget.dropdownItems!.contains(_selectedValue) ? _selectedValue : null,
+                      decoration: InputDecoration(
+                        labelText: widget.label,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        border: const OutlineInputBorder(),
+                      ),
+                      hint: widget.dropdownHint != null ? Text(widget.dropdownHint!) : null,
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Aucun'),
+                        ),
+                        ...widget.dropdownItems!.map((e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(e),
+                            )),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedValue = val;
+                        });
+                      },
+                    )
+                  : TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        labelText: widget.label,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: widget.isNumber ? TextInputType.number : TextInputType.text,
+                    ),
+            ),
+            const SizedBox(width: 8),
+            _isLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.save, color: Colors.green),
+                    onPressed: _handleSave,
+                    tooltip: 'Enregistrer',
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 final ValueNotifier<int> leaderboardRefreshNotifier = ValueNotifier<int>(0);
 
 class GadzScore {
@@ -624,6 +764,66 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     'Me': 'Siber\'s (Me)',
   };
 
+  Future<void> _updateProfileField(String field, dynamic value) async {
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) throw Exception("Non connecté");
+
+    final updatedMetadata = Map<String, dynamic>.from(currentUser.userMetadata ?? {});
+    
+    if (field == 'proms') {
+      if (value != null && value.toString().isNotEmpty) {
+        final parsed = int.tryParse(value.toString());
+        if (parsed != null && parsed >= 100 && parsed <= 999) {
+          updatedMetadata[field] = parsed;
+        } else {
+          throw Exception("Prom's invalide");
+        }
+      } else {
+        updatedMetadata.remove(field);
+      }
+    } else {
+      if (value != null && value.toString().isNotEmpty) {
+        updatedMetadata[field] = value.toString().trim();
+      } else {
+        if (field == 'bucque') throw Exception("La bucque est obligatoire");
+        updatedMetadata.remove(field);
+      }
+    }
+
+    await _supabase.auth.updateUser(UserAttributes(
+      data: updatedMetadata,
+    ));
+
+    try {
+      final currentProfileRes = await _supabase.from('profiles').select().eq('id', currentUser.id).maybeSingle();
+      if (currentProfileRes != null) {
+        final Map<String, dynamic> updateData = {
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        };
+        updateData[field] = (field == 'proms' && value != null && value.toString().isNotEmpty) 
+            ? int.tryParse(value.toString()) 
+            : (value?.toString().isNotEmpty == true ? value.toString().trim() : null);
+        await _supabase.from('profiles').update(updateData).eq('id', currentUser.id);
+      } else {
+        final updateData = {
+            'id': currentUser.id,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+        };
+        updateData['bucque'] = updatedMetadata['bucque'];
+        updateData['fams'] = updatedMetadata['fams'];
+        updateData['tabagns'] = updatedMetadata['tabagns'];
+        updateData['proms'] = updatedMetadata['proms'];
+        updateData['strass'] = updatedMetadata['strass'];
+        
+        await _supabase.from('profiles').upsert(updateData);
+      }
+    } catch (e) {
+      debugPrint('Erreur update profile db: $e');
+    }
+
+    await _loadLeaderboardData();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1071,326 +1271,367 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   }
 
   Widget _buildTopGadzView() {
-    if (_gadzScores.isEmpty) {
-      return Center(
-        child: const Text("Aucun Gadz's enregistré.", style: TextStyle(fontSize: 16)),
-      );
-    }
-
     final currentUserId = _supabase.auth.currentUser?.id;
+    final metadata = _supabase.auth.currentUser?.userMetadata ?? {};
+    final myBucque = metadata['bucque']?.toString();
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: _gadzScores.length,
-      itemBuilder: (context, index) {
-        final item = _gadzScores[index];
-        final isMe = item.userId == currentUserId;
+    final listView = _gadzScores.isEmpty
+        ? const Expanded(
+            child: Center(
+              child: Text("Aucun gadz enregistré.", style: TextStyle(fontSize: 16)),
+            ),
+          )
+        : Expanded(
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: _gadzScores.length,
+              itemBuilder: (context, index) {
+                final item = _gadzScores[index];
+                final isMe = item.userId == currentUserId;
 
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          elevation: isMe ? 3 : 1,
-          color: isMe ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: GadzScoreTile(
-            gadz: item,
-            leading: _buildRankWidget(index),
-            isMe: isMe,
-          ),
-        );
-      },
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  elevation: isMe ? 3 : 1,
+                  color: isMe ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+                  child: GadzScoreTile(
+                    gadz: item,
+                    leading: _buildRankWidget(index),
+                    isMe: isMe,
+                  ),
+                );
+              },
+            ),
+          );
+
+    return Column(
+      children: [
+        ProfileFieldEditor(
+          label: 'Ta bucque',
+          initialValue: myBucque,
+          onSave: (val) => _updateProfileField('bucque', val),
+        ),
+        listView,
+      ],
     );
   }
 
   Widget _buildTopFamsView() {
-    if (_famsScores.isEmpty) {
-      return const Center(
-        child: Text(
-          "Aucune fam's enregistrée.",
-          style: TextStyle(fontSize: 16),
-        ),
-      );
-    }
+    final metadata = _supabase.auth.currentUser?.userMetadata ?? {};
+    final myFams = metadata['fams']?.toString();
 
-    final currentUserId = _supabase.auth.currentUser?.id;
-    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
-          (g) => g?.userId == currentUserId,
-          orElse: () => null,
-        );
-    final myFams = myGadz?.fams;
+    final listView = _famsScores.isEmpty
+        ? const Expanded(
+            child: Center(
+              child: Text("Aucune fam's enregistrée.", style: TextStyle(fontSize: 16)),
+            ),
+          )
+        : Expanded(
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: _famsScores.length,
+              itemBuilder: (context, index) {
+                final item = _famsScores[index];
+                final isMyFams = myFams != null && myFams.isNotEmpty && myFams == item.fams;
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: _famsScores.length,
-      itemBuilder: (context, index) {
-        final item = _famsScores[index];
-        final isMyFams = myFams != null && myFams.isNotEmpty && myFams == item.fams;
+                final famsGroup = item.fams;
+                final groupPlayers = _gadzScores.where((g) => g.fams == famsGroup).toList();
+                groupPlayers.sort((a, b) => b.score.compareTo(a.score));
 
-        final famsGroup = item.fams;
-        final groupPlayers = _gadzScores.where((g) => g.fams == famsGroup).toList();
-        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
-
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          elevation: isMyFams ? 3 : 1,
-          color: isMyFams ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: InkWell(
-            onTap: () => _showGroupPlayersDialog(item.fams, groupPlayers),
-            child: ListTile(
-              leading: _buildRankWidget(index),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.fams,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  elevation: isMyFams ? 3 : 1,
+                  color: isMyFams ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+                  child: InkWell(
+                    onTap: () => _showGroupPlayersDialog(item.fams, groupPlayers),
+                    child: ListTile(
+                      leading: _buildRankWidget(index),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.fams,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ),
+                          if (isMyFams)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+                      trailing: Text(
+                        '${_formatScore(item.score)} Trad\'s',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.orange,
+                        ),
+                      ),
                     ),
                   ),
-                  if (isMyFams)
-                    Container(
-                      margin: const EdgeInsets.only(left: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                ],
-              ),
-              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-              trailing: Text(
-                '${_formatScore(item.score)} Trad\'s',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.orange,
-                ),
-              ),
+                );
+              },
             ),
-          ),
-        );
-      },
+          );
+
+    return Column(
+      children: [
+        ProfileFieldEditor(
+          label: 'Ta fam\'s',
+          initialValue: myFams,
+          onSave: (val) => _updateProfileField('fams', val),
+        ),
+        listView,
+      ],
     );
   }
 
   Widget _buildTopTabagnsView() {
-    if (_tabagnsScores.isEmpty) {
-      return Center(
-        child: Text(
-          "Aucun Tabagn's enregistré.",
-          style: TextStyle(fontSize: 16),
-        ),
-      );
-    }
+    final metadata = _supabase.auth.currentUser?.userMetadata ?? {};
+    final myTabagns = metadata['tabagns']?.toString();
 
-    final currentUserId = _supabase.auth.currentUser?.id;
-    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
-          (g) => g?.userId == currentUserId,
-          orElse: () => null,
-        );
-    final myTabagns = myGadz?.tabagns;
+    final listView = _tabagnsScores.isEmpty
+        ? const Expanded(
+            child: Center(
+              child: Text("Aucun tabagn's enregistré.", style: TextStyle(fontSize: 16)),
+            ),
+          )
+        : Expanded(
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: _tabagnsScores.length,
+              itemBuilder: (context, index) {
+                final item = _tabagnsScores[index];
+                final fullName = _tabagnsFullNames[item.tabagns] ?? item.tabagns;
+                final isMyTabagns = myTabagns != null && myTabagns.isNotEmpty && myTabagns == item.tabagns;
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: _tabagnsScores.length,
-      itemBuilder: (context, index) {
-        final item = _tabagnsScores[index];
-        final fullName = _tabagnsFullNames[item.tabagns] ?? item.tabagns;
-        final isMyTabagns = myTabagns != null && myTabagns.isNotEmpty && myTabagns == item.tabagns;
+                final tabagnsGroup = item.tabagns;
+                final groupPlayers = _gadzScores.where((g) => g.tabagns == tabagnsGroup).toList();
+                groupPlayers.sort((a, b) => b.score.compareTo(a.score));
 
-        final tabagnsGroup = item.tabagns;
-        final groupPlayers = _gadzScores.where((g) => g.tabagns == tabagnsGroup).toList();
-        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
-
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          elevation: isMyTabagns ? 3 : 1,
-          color: isMyTabagns ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: InkWell(
-            onTap: () => _showGroupPlayersDialog(fullName, groupPlayers),
-            child: ListTile(
-              leading: _buildRankWidget(index),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      fullName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  elevation: isMyTabagns ? 3 : 1,
+                  color: isMyTabagns ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+                  child: InkWell(
+                    onTap: () => _showGroupPlayersDialog(fullName, groupPlayers),
+                    child: ListTile(
+                      leading: _buildRankWidget(index),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              fullName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ),
+                          if (isMyTabagns)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+                      trailing: Text(
+                        '${_formatScore(item.score)} Trad\'s',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.orange,
+                        ),
+                      ),
                     ),
                   ),
-                  if (isMyTabagns)
-                    Container(
-                      margin: const EdgeInsets.only(left: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                ],
-              ),
-              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-              trailing: Text(
-                '${_formatScore(item.score)} Trad\'s',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.orange,
-                ),
-              ),
+                );
+              },
             ),
-          ),
-        );
-      },
+          );
+
+    return Column(
+      children: [
+        ProfileFieldEditor(
+          label: 'Ton tabagn\'s',
+          initialValue: myTabagns,
+          onSave: (val) => _updateProfileField('tabagns', val),
+          dropdownItems: _tabagnsFullNames.keys.toList(),
+        ),
+        listView,
+      ],
     );
   }
 
   Widget _buildTopPromsView() {
-    if (_promsScores.isEmpty) {
-      return Center(
-        child: Text(
-          "Aucune Prom's enregistrée.",
-          style: TextStyle(fontSize: 16),
-        ),
-      );
-    }
+    final metadata = _supabase.auth.currentUser?.userMetadata ?? {};
+    final myProms = metadata['proms']?.toString();
 
-    final currentUserId = _supabase.auth.currentUser?.id;
-    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
-          (g) => g?.userId == currentUserId,
-          orElse: () => null,
-        );
-    final myProms = myGadz?.proms;
+    final listView = _promsScores.isEmpty
+        ? const Expanded(
+            child: Center(
+              child: Text("Aucune prom's enregistrée.", style: TextStyle(fontSize: 16)),
+            ),
+          )
+        : Expanded(
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: _promsScores.length,
+              itemBuilder: (context, index) {
+                final item = _promsScores[index];
+                final isMyProms = myProms != null && myProms == item.proms.toString();
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: _promsScores.length,
-      itemBuilder: (context, index) {
-        final item = _promsScores[index];
-        final isMyProms = myProms != null && myProms == item.proms;
+                final promsNumber = item.proms;
+                final groupPlayers = _gadzScores.where((g) => g.proms == promsNumber).toList();
+                groupPlayers.sort((a, b) => b.score.compareTo(a.score));
 
-        final promsNumber = item.proms;
-        final groupPlayers = _gadzScores.where((g) => g.proms == promsNumber).toList();
-        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
-
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          elevation: isMyProms ? 3 : 1,
-          color: isMyProms ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: InkWell(
-            onTap: () => _showGroupPlayersDialog("Prom's ${item.proms}", groupPlayers),
-            child: ListTile(
-              leading: _buildRankWidget(index),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Prom\'s ${item.proms}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  elevation: isMyProms ? 3 : 1,
+                  color: isMyProms ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+                  child: InkWell(
+                    onTap: () => _showGroupPlayersDialog("Prom's ${item.proms}", groupPlayers),
+                    child: ListTile(
+                      leading: _buildRankWidget(index),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Prom\'s ${item.proms}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ),
+                          if (isMyProms)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+                      trailing: Text(
+                        '${_formatScore(item.score)} Trad\'s',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.orange,
+                        ),
+                      ),
                     ),
                   ),
-                  if (isMyProms)
-                    Container(
-                      margin: const EdgeInsets.only(left: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                ],
-              ),
-              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-              trailing: Text(
-                '${_formatScore(item.score)} Trad\'s',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.orange,
-                ),
-              ),
+                );
+              },
             ),
-          ),
-        );
-      },
+          );
+
+    return Column(
+      children: [
+        ProfileFieldEditor(
+          label: 'Ta prom\'s (100 à 999)',
+          initialValue: myProms,
+          onSave: (val) => _updateProfileField('proms', val),
+          isNumber: true,
+        ),
+        listView,
+      ],
     );
   }
 
   Widget _buildTopStrassView() {
-    if (_strassScores.isEmpty) {
-      return const Center(
-        child: Text(
-          "Aucune strass enregistré.",
-          style: TextStyle(fontSize: 16),
-        ),
-      );
-    }
+    final metadata = _supabase.auth.currentUser?.userMetadata ?? {};
+    final myStrass = metadata['strass']?.toString();
 
-    final currentUserId = _supabase.auth.currentUser?.id;
-    final myGadz = _gadzScores.cast<GadzScore?>().firstWhere(
-          (g) => g?.userId == currentUserId,
-          orElse: () => null,
-        );
-    final myStrass = myGadz?.strass;
+    final listView = _strassScores.isEmpty
+        ? const Expanded(
+            child: Center(
+              child: Text("Aucune strass enregistrée.", style: TextStyle(fontSize: 16)),
+            ),
+          )
+        : Expanded(
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: _strassScores.length,
+              itemBuilder: (context, index) {
+                final item = _strassScores[index];
+                final isMyStrass = myStrass != null && myStrass.isNotEmpty && myStrass == item.strass;
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: _strassScores.length,
-      itemBuilder: (context, index) {
-        final item = _strassScores[index];
-        final isMyStrass = myStrass != null && myStrass.isNotEmpty && myStrass == item.strass;
+                final strassGroup = item.strass;
+                final groupPlayers = _gadzScores.where((g) => g.strass == strassGroup).toList();
+                groupPlayers.sort((a, b) => b.score.compareTo(a.score));
 
-        final strassGroup = item.strass;
-        final groupPlayers = _gadzScores.where((g) => g.strass == strassGroup).toList();
-        groupPlayers.sort((a, b) => b.score.compareTo(a.score));
-
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          elevation: isMyStrass ? 3 : 1,
-          color: isMyStrass ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
-          child: InkWell(
-            onTap: () => _showGroupPlayersDialog(item.strass, groupPlayers),
-            child: ListTile(
-              leading: _buildRankWidget(index),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.strass,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  elevation: isMyStrass ? 3 : 1,
+                  color: isMyStrass ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4) : null,
+                  child: InkWell(
+                    onTap: () => _showGroupPlayersDialog(item.strass, groupPlayers),
+                    child: ListTile(
+                      leading: _buildRankWidget(index),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.strass,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ),
+                          if (isMyStrass)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+                      trailing: Text(
+                        '${_formatScore(item.score)} Trad\'s',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.orange,
+                        ),
+                      ),
                     ),
                   ),
-                  if (isMyStrass)
-                    Container(
-                      margin: const EdgeInsets.only(left: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text("phy's", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                ],
-              ),
-              subtitle: Text("${item.playerCount} ${item.playerCount > 1 ? 'gadz' : 'gadz'}", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-              trailing: Text(
-                '${_formatScore(item.score)} Trad\'s',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.orange,
-                ),
-              ),
+                );
+              }
             ),
-          ),
-        );
-      }
+          );
+
+    return Column(
+      children: [
+        ProfileFieldEditor(
+          label: 'Ta strass',
+          initialValue: myStrass,
+          onSave: (val) => _updateProfileField('strass', val),
+        ),
+        listView,
+      ],
     );
   }
 
