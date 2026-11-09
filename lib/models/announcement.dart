@@ -27,7 +27,7 @@ final List<Announcement> allAnnouncements = [
     id: 'elections_soce_2026',
     title: 'Elections SOCE',
     text: 'Pour les sociétaire, pensez à voter pour le CA de la SOCE cette semaine !',
-    startDate: DateTime(2026, 11, 9),
+    startDate: DateTime(2026, 11, 7),
     endDate: DateTime(2026, 11, 14),
   ),
   Announcement(
