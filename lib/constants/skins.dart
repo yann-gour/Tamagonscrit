@@ -43,9 +43,16 @@ class AvatarSkins {
       isRecolored: true,
     ),
     SkinItem(
+      id: 'cone',
+      name: 'Cône 2 chantier',
+      zloeilsPrice: 400,
+      assetPath: 'assets/skin_cone.png',
+      isRecolored: true,
+    ),
+    SkinItem(
       id: 'cache_boule_perso',
       name: 'Cache boule perso',
-      zloeilsPrice: 300,
+      zloeilsPrice: 700,
       assetPath: 'assets/skin_cache_boule_perso.png',
       isRecolored: true,
     ),
