@@ -103,6 +103,7 @@ flutter:
     - assets/skin_fignos.png
     - assets/skin_craps.png
     - assets/skin_jaune.png
+    - assets/skin_cone.png
     - assets/skin_bache_perso.png
     - assets/skin_cache_boule_perso.png
     - assets/skin_cache_boule_ai.png
