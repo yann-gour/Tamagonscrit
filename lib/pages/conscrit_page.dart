@@ -239,6 +239,60 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     }
   }
 
+  Future<void> _checkUAIAchievement() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await _supabase
+          .from('conscrits')
+          .select('tabagns, bools')
+          .eq('user_id', user.id);
+
+      final List<dynamic> list = response as List<dynamic>;
+      final Set<String> uaiTabagns = {};
+      for (var row in list) {
+        final t = row['tabagns']?.toString();
+        final b = row['bools']?.toString();
+        if (t != null && t.isNotEmpty && b == 'Zt UAI') {
+          uaiTabagns.add(t);
+        }
+      }
+
+      if (uaiTabagns.length >= 7 && mounted) {
+        await AchievementService().unlockAndShowPopup(context, 'uai');
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification du succès UAI: $e');
+    }
+  }
+
+  Future<void> _checkCommitsAchievement() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await _supabase
+          .from('conscrits')
+          .select('bools')
+          .eq('user_id', user.id);
+
+      int mtCount = 0;
+      int ftCount = 0;
+      for (var row in (response as List)) {
+        final b = row['bools']?.toString();
+        if (b == 'MT') mtCount++;
+        if (b == 'FT') ftCount++;
+      }
+
+      if (mtCount >= 1 && ftCount >= 4 && mounted) {
+        await AchievementService().unlockAndShowPopup(context, 'commits');
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification du succès Commits: $e');
+    }
+  }
+
   Future<void> _checkCrapaudAchievement() async {
     try {
       final user = _supabase.auth.currentUser;
@@ -342,8 +396,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         });
 
         _checkAchievements();
-        _checkMonomeCountAchievement();
         _checkTabagnsAchievements();
+        _checkUAIAchievement();
+        _checkCommitsAchievement();
         _checkCrapaudAchievement();
 
         if (_tabagns == null || _tabagns!.isEmpty) {
@@ -840,6 +895,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       monomeRefreshNotifier.value++;
       _checkMonomeCountAchievement();
       _checkTabagnsAchievements();
+      _checkUAIAchievement();
+      _checkCommitsAchievement();
       _checkCrapaudAchievement();
     } catch (e) {
       debugPrint('Erreur lors de la sauvegarde du conscrit terminé: $e');

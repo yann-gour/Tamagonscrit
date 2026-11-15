@@ -106,7 +106,7 @@ class AchievementService {
       title: "Le Grand Bastringue",
       subtitle: "Usiner un conscrit à Châlon's",
       description: "On a souvent parlé de la belle vie, que les Gadz'Arts menaient au Tabagnon !",
-      icon: Icons.savings,
+      icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/external-tanah-basah-glyph-tanah-basah/48/external-boar-animals-tanah-basah-glyph-tanah-basah.png',
       customIconColor: const Color(0xFFFF3333),
       customBackgroundColor: const Color(0xFF1E1E1E),
@@ -116,7 +116,7 @@ class AchievementService {
       title: "Dans les rues",
       subtitle: "Usiner un conscrit à Boquette",
       description: "Dans les rues que nous traversons en monôme...",
-      icon: Icons.flutter_dash,
+      icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/material/96/falcon.png',
       customIconColor: const Color(0xFF001F54),
       customBackgroundColor: const Color(0xFFD32F2F),
@@ -126,7 +126,7 @@ class AchievementService {
       title: "Les Olives",
       subtitle: "Usiner un conscrit à KIN",
       description: "J'ai de belles olives, oui qu'on se le dise !",
-      icon: Icons.water,
+      icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/material/96/dolphin.png',
       customIconColor: const Color(0xFF001F54),
       customBackgroundColor: const Color(0xFF81D4FA),
@@ -170,6 +170,22 @@ class AchievementService {
       imageUrl: 'https://img.icons8.com/material/96/wolf.png',
       customIconColor: const Color(0xFF311B92),
       customBackgroundColor: const Color(0xFF800020),
+    ),
+    Achievement(
+      id: 'uai',
+      title: "L'UAI",
+      subtitle: "Usiner un Zt UAI de chaque tabagn's",
+      description: "L'UAI a des athlètes, qui connaissent le prix de l'effort !",
+      icon: Icons.sports_score,
+      zloeils: 500,
+    ),
+    Achievement(
+      id: 'commits',
+      title: "Aux Trad's (bis)",
+      subtitle: "Usiner 1 MT et 4 FT",
+      description: "Sonnez clairons aux notes éclatantes !",
+      icon: Icons.groups,
+      zloeils: 600,
     ),
     Achievement(
       id: 'crapaud',
@@ -287,6 +303,30 @@ class AchievementService {
 
             if (conscritsData.length >= 100 && !unlockedIds.contains('a_la_fraterns')) {
               unlockedIds.add('a_la_fraterns');
+            }
+
+            if (!unlockedIds.contains('uai')) {
+              final Set<String> uaiTabagns = {};
+              for (var c in conscritsData) {
+                if (c['bools'] == 'Zt UAI' && c['tabagns'] != null) {
+                  uaiTabagns.add(c['tabagns'].toString());
+                }
+              }
+              if (uaiTabagns.length >= 7) {
+                unlockedIds.add('uai');
+              }
+            }
+
+            if (!unlockedIds.contains('commits')) {
+              int mtCount = 0;
+              int ftCount = 0;
+              for (var c in conscritsData) {
+                if (c['bools'] == 'MT') mtCount++;
+                if (c['bools'] == 'FT') ftCount++;
+              }
+              if (mtCount >= 1 && ftCount >= 4) {
+                unlockedIds.add('commits');
+              }
             }
           }
 
