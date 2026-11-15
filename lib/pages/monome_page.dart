@@ -8,6 +8,7 @@ import '../widgets/sprite_sheet_animator.dart';
 import '../widgets/avatar_conscrit_widget.dart';
 import '../services/achievement_service.dart';
 import '../constants/skins.dart';
+import '../constants/bools_names.dart';
 
 final ValueNotifier<int> monomeRefreshNotifier = ValueNotifier<int>(0);
 
@@ -591,6 +592,7 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
     final String name = (conscrit['name'] as String?) ?? '';
     final String conscritTabagns = (conscrit['tabagns'] as String?) ?? '';
     final String conscritFams = (conscrit['fams'] as String?) ?? '';
+    final String conscritBools = (conscrit['bools'] as String?) ?? '';
     final int seniority = conscrit['seniority'] as int? ?? 1;
 
     List<String> parts = [];
@@ -604,6 +606,11 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
       parts.add('$conscritTabagns$seniority');
     } else {
       parts.add('$seniority');
+    }
+    if (conscritBools.isNotEmpty) {
+      parts.add(BoolsNames.getDisplayName(
+          conscritBools,
+          conscritTabagns.isNotEmpty ? conscritTabagns : _playerTabagns));
     }
 
     final displayLabel = parts.join(' ');
@@ -797,6 +804,15 @@ class _MonomePageState extends State<MonomePage> with AutomaticKeepAliveClientMi
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.orange,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Conscrits usinés : ${_conscrits.length}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.blueGrey,
                           ),
                         ),
                       ],
