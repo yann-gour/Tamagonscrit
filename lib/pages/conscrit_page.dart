@@ -10,6 +10,7 @@ import '../utils/conscrit_names.dart';
 import '../widgets/sprite_sheet_animator.dart';
 import '../models/random_event.dart';
 import '../constants/stat_weights.dart';
+import '../constants/bools_names.dart';
 import 'monome_page.dart';
 import 'profile_page.dart';
 import '../services/notification_service.dart';
@@ -831,6 +832,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'duration_seconds': seconds,
         'tabagns': _tabagns,
         'fams': _conscritFams,
+        'bools': _bools,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
       debugPrint('Conscrit terminé enregistré avec succès dans Supabase.');
@@ -1160,7 +1162,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                     Navigator.of(context).pop();
                     _startTimer();
                   },
-                  child: Text(choice),
+                  child: Text(BoolsNames.getDisplayName(choice, _tabagns)),
                 ),
               )).toList(),
             ],
@@ -1527,7 +1529,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                             ),
                           if (_bools != null && _bools!.isNotEmpty)
                             Text(
-                              _bools!,
+                              BoolsNames.getDisplayName(_bools!, _tabagns),
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
