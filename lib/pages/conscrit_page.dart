@@ -39,6 +39,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   bool _hasShownBapts = false;
   bool _hasShownParrainage = false;
   bool _hasShownPriseEnMs = false;
+  bool _hasShownElections = false;
+  String? _bools;
   String? _tabagns;
   String? _conscritFams;
   DateTime? _startTime;
@@ -293,6 +295,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           'has_shown_bapts': false,
           'has_shown_parrainage': false,
           'has_shown_prise_en_ms': false,
+          'has_shown_elections': false,
+          'bools': null,
         });
         _showTabagnsRequiredDialog();
       } else {
@@ -310,6 +314,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           _hasShownBapts = data['has_shown_bapts'] as bool? ?? false;
           _hasShownParrainage = data['has_shown_parrainage'] as bool? ?? false;
           _hasShownPriseEnMs = data['has_shown_prise_en_ms'] as bool? ?? false;
+          _hasShownElections = data['has_shown_elections'] as bool? ?? false;
+          _bools = data['bools'] as String?;
           
           // Compatibilité : si c'est encore un gif en DB, on force le png
           String gifFromDb = data['current_gif'] as String;
@@ -544,11 +550,22 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
     setState(() {
       final effectContext = EventEffectContext(
+        conscritBools: _bools,
         addBirse: (delta) {
           _birse = (_birse + delta).clamp(0.0, 100.0);
         },
         addTrads: (delta) {
-          _trads = (_trads + delta).clamp(0.0, 100.0);
+          double finalDelta = delta;
+          if (_bools == 'MT') {
+            if (finalDelta > 0) finalDelta *= 3;
+            else if (finalDelta < 0) finalDelta = 0;
+          } else if (_bools == 'FT') {
+            if (finalDelta > 0) finalDelta *= 2;
+            else if (finalDelta < 0) finalDelta *= 0.5;
+          } else if (_bools == 'Zt AE' && finalDelta > 0) {
+            finalDelta *= 1.5;
+          }
+          _trads = (_trads + finalDelta).clamp(0.0, 100.0);
         },
         addBrousoufs: (delta) {
           _brousoufs += delta;
@@ -671,6 +688,13 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     if (_trads >= 10.0 && !_hasShownParrainage) {
       _showParrainagePopup();
     }
+
+    if (_startTime != null && !_hasShownElections) {
+      final elapsedSeconds = DateTime.now().toUtc().difference(_startTime!).inSeconds;
+      if (elapsedSeconds >= 3 * 3600) {
+        _showElectionsPopup();
+      }
+    }
   }
 
   void _scheduleNotifications() {
@@ -708,6 +732,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         'has_shown_bapts': _hasShownBapts,
         'has_shown_parrainage': _hasShownParrainage,
         'has_shown_prise_en_ms': _hasShownPriseEnMs,
+        'has_shown_elections': _hasShownElections,
+        'bools': _bools,
         // last_updated est géré automatiquement par le trigger Supabase ou default now() si update classique
       });
 
@@ -1086,6 +1112,64 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     );
   }
 
+  Future<void> _showElectionsPopup() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _hasShownElections = true;
+      _activity = 'idle';
+      _currentImage = 'conscrit.png';
+    });
+    _timer?.cancel();
+    _saveStateToSupabase();
+
+    List<String> possibleBools = [];
+    if (_trads > 90.0) possibleBools.add('MT');
+    if (_trads > 50.0) possibleBools.add('FT');
+    if (_birse > 30.0 && _trads > 30.0) possibleBools.add('Zt AE');
+    possibleBools.add("Grip's");
+    if (_trads > 10.0) possibleBools.add("Zt Guinche");
+    if (_trads > 10.0) possibleBools.add("Zt Foy's");
+    possibleBools.add("Zt UAI");
+    possibleBools.add("Zt Cvi's");
+    if (_birse > 50.0) possibleBools.add("Zt AMJE");
+
+    possibleBools.shuffle();
+    List<String> choices = possibleBools.take(3).toList();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Elections !"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text("C'est les élections ! Pour quel bool's $_name se présente ?"),
+              const SizedBox(height: 16),
+              ...choices.map((choice) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _bools = choice;
+                    });
+                    _saveStateToSupabase();
+                    Navigator.of(context).pop();
+                    _startTimer();
+                  },
+                  child: Text(choice),
+                ),
+              )).toList(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _schedulePriseEnMsPopup() {
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted && !_hasShownPriseEnMs) {
@@ -1120,8 +1204,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    _birse = (_birse + 20.0).clamp(0.0, 100.0);
-                    _energie = (_energie - 30.0).clamp(0.0, 100.0);
+                    _birse = (_birse + 30.0).clamp(0.0, 100.0);
+                    _energie = (_energie - 20.0).clamp(0.0, 100.0);
                   });
                   _saveStateToSupabase();
                   Navigator.of(context).pop();
@@ -1145,7 +1229,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    _trads = (_trads + 20.0).clamp(0.0, 100.0);
+                    _trads = (_trads + 50.0).clamp(0.0, 100.0);
                     _energie = (_energie - 30.0).clamp(0.0, 100.0);
                   });
                   _saveStateToSupabase();
@@ -1172,9 +1256,11 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       _hasShownBapts = false;
       _hasShownParrainage = false;
       _hasShownPriseEnMs = false;
+      _hasShownElections = false;
       _name = ConscritNames.getRandomName();
       _tabagns = null;
       _conscritFams = null;
+      _bools = null;
       _energie = 100.0;
       _birse = 0.0;
       _trads = 0.0;
@@ -1193,33 +1279,53 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   }
 
   double _getStatRate(String stat) {
+    double rate = 0.0;
     switch (_activity) {
       case 'birse':
-        if (stat == 'energie') return -1.0 * StatWeights.weightEnergie;
-        if (stat == 'birse') return 0.5 * StatWeights.weightBirse;
-        if (stat == 'trads') return -0.1 * StatWeights.weightTrads;
+        if (stat == 'energie') rate = -1.0 * StatWeights.weightEnergie;
+        if (stat == 'birse') rate = 0.5 * StatWeights.weightBirse;
+        if (stat == 'trads') rate = -0.1 * StatWeights.weightTrads;
         break;
       case 'ronque':
-        if (stat == 'energie') return 1.0 * StatWeights.weightEnergie;
+        if (stat == 'energie') rate = 1.0 * StatWeights.weightEnergie;
         break;
       case 'monome':
-        if (stat == 'energie') return -1.0 * StatWeights.weightEnergie;
-        if (stat == 'trads') return 0.7 * StatWeights.weightTrads;
+        if (stat == 'energie') rate = -1.0 * StatWeights.weightEnergie;
+        if (stat == 'trads') rate = 0.7 * StatWeights.weightTrads;
         break;
       case 'chouille':
-        if (stat == 'energie') return -2.0 * StatWeights.weightEnergie;
-        if (stat == 'birse') return -0.2 * StatWeights.weightBirse;
-        if (stat == 'trads') return 0.4 * StatWeights.weightTrads;
+        if (stat == 'energie') rate = -2.0 * StatWeights.weightEnergie;
+        if (stat == 'birse') rate = -0.2 * StatWeights.weightBirse;
+        if (stat == 'trads') rate = 0.4 * StatWeights.weightTrads;
         break;
       case 'fins':
-        if (stat == 'energie') return 1.0 * StatWeights.weightEnergie;
-        if (stat == 'trads') return 0.4 * StatWeights.weightTrads;
+        if (stat == 'energie') rate = 1.0 * StatWeights.weightEnergie;
+        if (stat == 'trads') rate = 0.4 * StatWeights.weightTrads;
         break;
       case 'idle':
       default:
-        return 0.0;
+        rate = 0.0;
+        break;
     }
-    return 0.0;
+
+    if (stat == 'trads') {
+      if (_bools == 'MT') {
+        if (rate > 0) rate *= 3;
+        else if (rate < 0) rate = 0;
+      } else if (_bools == 'FT') {
+        if (rate > 0) rate *= 2;
+        else if (rate < 0) rate *= 0.5;
+      } else if (_bools == 'Zt AE' && rate > 0) {
+        rate *= 1.5;
+      }
+    } else if (stat == 'energie') {
+      if (rate < 0) {
+        if (_bools == 'Zt UAI') rate *= 0.5;
+        if (_activity == 'chouille' && _bools == "Zt Foy's") rate = 0.0;
+      }
+    }
+    
+    return rate;
   }
 
   String _formatDurationWithSeconds(int totalSeconds) {
@@ -1417,6 +1523,15 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          if (_bools != null && _bools!.isNotEmpty)
+                            Text(
+                              _bools!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).colorScheme.secondary,
                               ),
                             ),
                         ],

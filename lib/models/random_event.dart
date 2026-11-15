@@ -17,6 +17,7 @@ class EventEffectContext {
   final void Function(double value) setEnergie;
   final void Function(String activity, String image) setActivity;
   final void Function() resetState;
+  final String? conscritBools;
 
   EventEffectContext({
     required this.addBirse,
@@ -25,6 +26,7 @@ class EventEffectContext {
     required this.setEnergie,
     required this.setActivity,
     required this.resetState,
+    this.conscritBools,
   });
 }
 
@@ -148,7 +150,10 @@ final RandomEvent brousoufsEvent = RandomEvent(
       getResultText: (name) => '$name a participé à un projet AMJE et gagné 50 brousoufs !',
       isAvailable: (context) => context.birse >= 50.0,
       applyEffect: (context) {
-        context.addBrousoufs(50);
+        int amount = 50;
+        if (context.conscritBools == "Zt AMJE") amount *= 10;
+        else if (context.conscritBools == "Grip's") amount *= 2;
+        context.addBrousoufs(amount);
       },
     ),
     EventChoice(
@@ -156,7 +161,9 @@ final RandomEvent brousoufsEvent = RandomEvent(
       getResultText: (name) => '$name a donné des cours de maths et gagné 10 brousoufs !',
       isAvailable: (context) => context.birse >= 10.0,
       applyEffect: (context) {
-        context.addBrousoufs(10);
+        int amount = 10;
+        if (context.conscritBools == "Grip's") amount *= 2;
+        context.addBrousoufs(amount);
       },
     ),
     EventChoice(
@@ -164,7 +171,9 @@ final RandomEvent brousoufsEvent = RandomEvent(
       getResultText: (name) => '$name a reçu un prêt d\'hon\'s de 100 brousoufs !',
       isAvailable: (context) => context.trads >= 50.0,
       applyEffect: (context) {
-        context.addBrousoufs(100);
+        int amount = 100;
+        if (context.conscritBools == "Grip's") amount *= 2;
+        context.addBrousoufs(amount);
       },
     ),
     EventChoice(
