@@ -179,7 +179,7 @@ final RandomEvent brousoufsEvent = RandomEvent(
   choices: [
     EventChoice(
       label: 'Participer à un projet AMJE',
-      getResultText: (name) => '$name a participé à un projet AMJE et gagné 50 brousoufs !',
+      getResultText: (name) => '$name a participé à un projet AMJE et gagné des brousoufs !',
       isAvailable: (context) => context.birse >= 50.0,
       applyEffect: (context) {
         int amount = 50;
@@ -190,7 +190,7 @@ final RandomEvent brousoufsEvent = RandomEvent(
     ),
     EventChoice(
       label: 'Donner des cours de maths',
-      getResultText: (name) => '$name a donné des cours de maths et gagné 10 brousoufs !',
+      getResultText: (name) => '$name a donné des cours de maths et gagné des brousoufs !',
       isAvailable: (context) => context.birse >= 10.0,
       applyEffect: (context) {
         int amount = 10;
@@ -200,7 +200,7 @@ final RandomEvent brousoufsEvent = RandomEvent(
     ),
     EventChoice(
       label: 'Demander un prêt d\'hon\'s à la SOCE',
-      getResultText: (name) => '$name a reçu un prêt d\'hon\'s de 100 brousoufs !',
+      getResultText: (name) => '$name a reçu un prêt d\'hon\'s de des brousoufs !',
       isAvailable: (context) => context.trads >= 50.0,
       applyEffect: (context) {
         int amount = 100;
@@ -261,7 +261,7 @@ RandomEvent createHeureTradEvent(String timeDisplay) {
       EventChoice(
         label: 'Célébrer l\'heure trad\'s !',
         getResultText: (name) =>
-            '$name a célébré l\'heure trad\'s et passe immédiatement à 100 trad\'s !',
+            '$name a célébré l\'heure trad\'s c\'est très trad\'s !',
         applyEffect: (context) {
           context.addTrads(100.0);
         },
@@ -277,7 +277,7 @@ final RandomEvent event508 = RandomEvent(
   choices: [
     EventChoice(
       label: '508 !',
-      getResultText: (name) => "5h08 c'est les 508 ! Le conscrit a la tête à l'envers !",
+      getResultText: (name) => "5h08 c'est les 508 !",
       applyEffect: (context) {},
     ),
   ],
