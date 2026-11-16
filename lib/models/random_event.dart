@@ -140,6 +140,38 @@ final RandomEvent finsEvent = RandomEvent(
   ],
 );
 
+final RandomEvent galaEvent = RandomEvent(
+  id: 'gala',
+  title: 'Gala !',
+  getDescription: (name) => 'C\'est bientôt le Gala ! que va faire $name ?',
+  choices: [
+    EventChoice(
+      label: 'Usiner le Gala et profiter de la soirée',
+      getResultText: (name) => '$name est descendu gnasser avec ses cop\'s et profite de son Gala !',
+      applyEffect: (context) {
+        context.addTrads(30.0);
+        context.setActivity('chouille', 'chouille.png');
+      },
+    ),
+    EventChoice(
+      label: 'Ne pas usiner le Gala mais profiter de la soirée',
+      getResultText: (name) => '$name profite de son Gala comme un égoïste !',
+      applyEffect: (context) {
+        context.addTrads(-30.0);
+        context.setActivity('chouille', 'chouille.png');
+      },
+    ),
+    EventChoice(
+      label: 'Rester ronquer à Kgib\'s.',
+      getResultText: (name) => '$name est resté ronquer tranquillement à Kgib\'s !',
+      applyEffect: (context) {
+        context.addTrads(-50.0);
+        context.setActivity('ronque', 'ronque.png');
+      },
+    ),
+  ],
+);
+
 final RandomEvent brousoufsEvent = RandomEvent(
   id: 'brousoufs',
   title: 'Brousoufs !',
