@@ -1186,6 +1186,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     if (_trads > 90.0) possibleBools.add('MT');
     if (_trads > 50.0) possibleBools.add('FT');
     if (_birse > 30.0 && _trads > 30.0) possibleBools.add('Zt AE');
+    possibleBools.add("ME");
     possibleBools.add("Grip's");
     if (_trads > 10.0) possibleBools.add("Zt Guinche");
     if (_trads > 10.0) possibleBools.add("Zt Foy's");
