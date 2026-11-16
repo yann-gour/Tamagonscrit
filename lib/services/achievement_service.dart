@@ -196,7 +196,7 @@ class AchievementService {
       imageUrl: 'https://img.icons8.com/fluency-systems-regular/96/trident.png',
       zloeils: 500,
     ),
-    Achievement(
+/*    Achievement(
       id: 'zt2',
       title: "Zt UE",
       subtitle: "Usiner 1 Zt de chaque tabagn's",
@@ -219,7 +219,7 @@ class AchievementService {
       description: "Validée l'UE !",
       icon: Icons.chess_bishop,
       zloeils: 1000,
-    ),
+    ),*/
     Achievement(
       id: 'crapaud',
       title: "Crapaud",
