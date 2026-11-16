@@ -3,28 +3,33 @@ class BoolsNames {
     'Ai': {
       'Zt AE': 'Zt Cercle',
       'ME': 'Archimède',
-      "Trésor's": "Grip's",
       "Zt Foy's": 'Zt Kfet',
       'Zt UAI': 'Zt Pitate',
     },
     'Ch': {
       'Zt AE': 'GAF',
       'MT': 'Colon',
+      "Grip's": "Trésor's",
       'Zt UAI': 'Zt Handball',
     },
     'Bo': {
+      "Grip's": "Trésor's",
       'Zt UAI': "Zt Rub's",
     },
     'Me': {
+      "Grip's": "Trésor's",
       'Zt UAI': 'Zt Volleyball',
     },
     'An': {
+      "Grip's": "Trésor's",
       'Zt UAI': 'Zt Natation',
     },
     'Cl': {
+      "Grip's": "Trésor's",
       'Zt UAI': 'Zt Ping Pong',
     },
     'Li': {
+      "Grip's": "Trésor's",
       'MT': 'GAF',
       'Zt UAI': 'Zt Basketball',
     },
