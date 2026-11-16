@@ -2,7 +2,8 @@ class BoolsNames {
   static const Map<String, Map<String, String>> _tabagnsOverrides = {
     'Ai': {
       'Zt AE': 'Zt Cercle',
-      "Grip's": "Trésor's",
+      'ME': 'Archimède',
+      "Trésor's": "Grip's",
       "Zt Foy's": 'Zt Kfet',
       'Zt UAI': 'Zt Pitate',
     },
@@ -24,6 +25,7 @@ class BoolsNames {
       'Zt UAI': 'Zt Ping Pong',
     },
     'Li': {
+      'MT': 'GAF',
       'Zt UAI': 'Zt Basketball',
     },
   };
