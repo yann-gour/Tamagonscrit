@@ -187,7 +187,7 @@ class AchievementService {
       icon: Icons.groups,
       zloeils: 600,
     ),
-    Achievement(
+/*    Achievement(
       id: 'trident',
       title: "Trident",
       subtitle: "Usiner 1 MT, 1 Zt AE et 1 ME",
@@ -196,7 +196,7 @@ class AchievementService {
       imageUrl: 'https://img.icons8.com/fluency-systems-regular/96/trident.png',
       zloeils: 500,
     ),
-/*    Achievement(
+    Achievement(
       id: 'zt2',
       title: "Zt UE",
       subtitle: "Usiner 1 Zt de chaque tabagn's",
@@ -340,13 +340,34 @@ class AchievementService {
 
             if (!unlockedIds.contains('uai')) {
               final Set<String> uaiTabagns = {};
+              final Set<String> mt2Tabagns = {};
+              final Set<String> zt2Tabagns = {};
+              final Set<String> me2Tabagns = {};
               for (var c in conscritsData) {
                 if (c['bools'] == 'Zt UAI' && c['tabagns'] != null) {
                   uaiTabagns.add(c['tabagns'].toString());
                 }
+                if (c['bools'] == 'MT' && c['tabagns'] != null) {
+                  mt2Tabagns.add(c['tabagns'].toString());
+                }
+                if (c['bools'] == 'Zt AE' && c['tabagns'] != null) {
+                  zt2Tabagns.add(c['tabagns'].toString());
+                }
+                if (c['bools'] == 'ME' && c['tabagns'] != null) {
+                  me2Tabagns.add(c['tabagns'].toString());
+                }
               }
               if (uaiTabagns.length >= 7) {
                 unlockedIds.add('uai');
+              }
+              if (mt2Tabagns.length >= 7) {
+                unlockedIds.add('mt2');
+              }
+              if (zt2Tabagns.length >= 7) {
+                unlockedIds.add('zt2');
+              }
+              if (me2Tabagns.length >= 7) {
+                unlockedIds.add('me2');
               }
             }
 
