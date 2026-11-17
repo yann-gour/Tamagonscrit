@@ -181,6 +181,9 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     if (_activity == 'chouille') {
       AchievementService().unlockAndShowPopup(context, 'a_bacchus');
     }
+    if (_brousoufs >= 1000000.0) {
+      AchievementService().unlockAndShowPopup(context, 'brousouf');
+    }
   }
 
   Future<void> _checkMonomeCountAchievement() async {
@@ -251,19 +254,40 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
       final List<dynamic> list = response as List<dynamic>;
       final Set<String> uaiTabagns = {};
+      final Set<String> mt2Tabagns = {};
+      final Set<String> zt2Tabagns = {};
+      final Set<String> me2Tabagns = {};
       for (var row in list) {
         final t = row['tabagns']?.toString();
         final b = row['bools']?.toString();
         if (t != null && t.isNotEmpty && b == 'Zt UAI') {
           uaiTabagns.add(t);
         }
+        if (t != null && t.isNotEmpty && b == 'MT') {
+          mt2Tabagns.add(t);
+        }
+        if (t != null && t.isNotEmpty && b == 'Zt AE') {
+          zt2Tabagns.add(t);
+        }
+        if (t != null && t.isNotEmpty && b == 'ME') {
+          me2Tabagns.add(t);
+        }
       }
 
       if (uaiTabagns.length >= 7 && mounted) {
         await AchievementService().unlockAndShowPopup(context, 'uai');
       }
+      if (mt2Tabagns.length >= 7 && mounted) {
+        await AchievementService().unlockAndShowPopup(context, 'mt2');
+      }
+      if (zt2Tabagns.length >= 7 && mounted) {
+        await AchievementService().unlockAndShowPopup(context, 'zt2');
+      }
+      if (me2Tabagns.length >= 7 && mounted) {
+        await AchievementService().unlockAndShowPopup(context, 'me2');
+      }
     } catch (e) {
-      debugPrint('Erreur vérification du succès UAI: $e');
+      debugPrint('Erreur vérification du succès UAI/MT2/ZT2/ME2: $e');
     }
   }
 
