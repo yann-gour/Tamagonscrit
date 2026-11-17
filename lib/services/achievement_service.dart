@@ -197,6 +197,14 @@ class AchievementService {
       zloeils: 500,
     ),
     Achievement(
+      id: 'brousouf',
+      title: "Archi brousouf",
+      subtitle: "Être très très brousouf",
+      description: "Brousouf comme crésu'ssss !",
+      icon: Icons.savings,
+      zloeils: 1000,
+    ),
+    Achievement(
       id: 'zt2',
       title: "Zt UE",
       subtitle: "Usiner 1 Zt de chaque tabagn's",
