@@ -166,7 +166,7 @@ class AchievementService {
       title: "Monôme de Siber's",
       subtitle: "Usiner un conscrit à Siber's",
       description: "Dans le froid du grand nord d'la Lorraine...",
-      icon: Icons.nights_stay,
+      icon: Icons.pets,
       imageUrl: 'https://img.icons8.com/material/96/wolf.png',
       customIconColor: const Color(0xFF311B92),
       customBackgroundColor: const Color(0xFF800020),
@@ -192,7 +192,7 @@ class AchievementService {
       title: "Trident",
       subtitle: "Usiner 1 MT, 1 Zt AE et 1 ME",
       description: "C'est mieux qu'une fourchette ?",
-      icon: Icons.fork_spoon,
+      icon: Icons.workspace_premium, //fork_spoon,
       imageUrl: 'https://img.icons8.com/fluency-systems-regular/96/trident.png',
       zloeils: 500,
     ),
@@ -202,6 +202,7 @@ class AchievementService {
       subtitle: "Gagner 1 000 000 brousoufs",
       description: "Brousouf comme crésu's !",
       icon: Icons.savings,
+      imageUrl: 'https://img.icons8.com/material/96/money-box--v1.png'
       zloeils: 1000,
     ),
     Achievement(
@@ -209,7 +210,8 @@ class AchievementService {
       title: "Zt UE",
       subtitle: "Usiner 1 Zt de chaque tabagn's",
       description: "Validée l'UE !",
-      icon: Icons.chess_rook,
+      icon: Icons.workspace_premium, //chess_rook,
+      imageUrl: 'https://img.icons8.com/material/96/rook.png'
       zloeils: 1000,
     ),
     Achievement(
@@ -217,7 +219,8 @@ class AchievementService {
       title: "MT²",
       subtitle: "Usiner 1 MT de chaque tabagn's",
       description: "Validée l'UE !",
-      icon: Icons.chess_bishop,
+      icon: Icons.workspace_premium, //chess_bishop,
+      imageUrl: 'https://img.icons8.com/material/96/bishop.png'
       zloeils: 1000,
     ),
     Achievement(
@@ -225,7 +228,8 @@ class AchievementService {
       title: "MEME",
       subtitle: "Usiner 1 ME de chaque tabagn's",
       description: "Validée l'UE !",
-      icon: Icons.chess_knight,
+      icon: Icons.workspace_premium, //chess_knight,
+      imageUrl: 'https://img.icons8.com/material/96/knight.png'
       zloeils: 1000,
     ),
     Achievement(
