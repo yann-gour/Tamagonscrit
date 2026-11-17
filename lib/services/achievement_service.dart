@@ -173,6 +173,14 @@ class AchievementService {
       customBackgroundColor: const Color(0xFF800020),
     ),
     Achievement(
+      id: '508',
+      title: "508",
+      subtitle: "???",
+      description: "5h08 c'est les 508 !",
+      icon: Symbols.nest_clock_farsight_analog,
+      imageUrl: 'https://img.icons8.com/material/96/invert-selection--v1.png',
+    ),
+    Achievement(
       id: 'uai',
       title: "L'UAI",
       subtitle: "Usiner un Zt UAI de chaque tabagn's",
