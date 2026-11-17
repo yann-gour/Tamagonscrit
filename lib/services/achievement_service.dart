@@ -15,6 +15,7 @@ class Achievement {
   final Color? customBackgroundColor;
   final int zloeils;
   final String? audioPath;
+  final bool? isHidden
   bool isUnlocked;
 
   Achievement({
@@ -28,6 +29,7 @@ class Achievement {
     this.customBackgroundColor,
     this.zloeils = 100,
     this.audioPath,
+    this.isHidden = false,
     this.isUnlocked = false,
   });
 }
@@ -175,10 +177,11 @@ class AchievementService {
     Achievement(
       id: '508',
       title: "508",
-      subtitle: "???",
+      subtitle: "Usiner à 5h08",
       description: "5h08 c'est les 508 !",
       icon: Symbols.nest_clock_farsight_analog,
       imageUrl: 'https://img.icons8.com/material/96/invert-selection--v1.png',
+      isHidden = true;
     ),
     Achievement(
       id: 'uai',
