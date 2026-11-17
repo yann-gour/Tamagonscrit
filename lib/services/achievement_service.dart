@@ -196,11 +196,11 @@ class AchievementService {
       imageUrl: 'https://img.icons8.com/fluency-systems-regular/96/trident.png',
       zloeils: 500,
     ),
-/*    Achievement(
+    Achievement(
       id: 'brousouf',
       title: "Archi brousouf",
-      subtitle: "Être très très brousouf",
-      description: "Brousouf comme crésu'ssss !",
+      subtitle: "Gagner 1 000 000 brousoufs",
+      description: "Brousouf comme crésu's !",
       icon: Icons.savings,
       zloeils: 1000,
     ),
@@ -227,7 +227,7 @@ class AchievementService {
       description: "Validée l'UE !",
       icon: Icons.chess_bishop,
       zloeils: 1000,
-    ),*/
+    ),
     Achievement(
       id: 'crapaud',
       title: "Crapaud",
