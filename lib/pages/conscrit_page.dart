@@ -555,6 +555,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     if ((now.hour == 5 || now.hour == 17) && now.minute == 8) {
       _last508DateTriggered = slotKey;
       _showEventDialog(event508);
+      AchievementService().unlockAndShowPopup(context, '508');
     }
   }
 
