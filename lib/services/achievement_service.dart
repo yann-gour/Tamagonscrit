@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'audio_service.dart';
@@ -192,7 +193,7 @@ class AchievementService {
       title: "Trident",
       subtitle: "Usiner 1 MT, 1 Zt AE et 1 ME",
       description: "C'est mieux qu'une fourchette ?",
-      icon: Icons.workspace_premium, //fork_spoon,
+      icon: Symbols.fork_spoon,
       imageUrl: 'https://img.icons8.com/fluency-systems-regular/96/trident.png',
       zloeils: 500,
     ),
@@ -202,7 +203,7 @@ class AchievementService {
       subtitle: "Gagner 1 000 000 brousoufs",
       description: "Brousouf comme crésu's !",
       icon: Icons.savings,
-      imageUrl: 'https://img.icons8.com/material/96/money-box--v1.png'
+      //imageUrl: 'https://img.icons8.com/material/96/money-box--v1.png'
       zloeils: 1000,
     ),
     Achievement(
@@ -210,8 +211,8 @@ class AchievementService {
       title: "Zt UE",
       subtitle: "Usiner 1 Zt de chaque tabagn's",
       description: "Validée l'UE !",
-      icon: Icons.workspace_premium, //chess_rook,
-      imageUrl: 'https://img.icons8.com/material/96/rook.png'
+      icon: Symbols.chess_rook,
+      //imageUrl: 'https://img.icons8.com/material/96/rook.png'
       zloeils: 1000,
     ),
     Achievement(
@@ -219,8 +220,8 @@ class AchievementService {
       title: "MT²",
       subtitle: "Usiner 1 MT de chaque tabagn's",
       description: "Validée l'UE !",
-      icon: Icons.workspace_premium, //chess_bishop,
-      imageUrl: 'https://img.icons8.com/material/96/bishop.png'
+      icon: Symbols.chess_bishop,
+      //imageUrl: 'https://img.icons8.com/material/96/bishop.png'
       zloeils: 1000,
     ),
     Achievement(
@@ -228,8 +229,8 @@ class AchievementService {
       title: "MEME",
       subtitle: "Usiner 1 ME de chaque tabagn's",
       description: "Validée l'UE !",
-      icon: Icons.workspace_premium, //chess_knight,
-      imageUrl: 'https://img.icons8.com/material/96/knight.png'
+      icon: Symbols.chess_knight,
+      //imageUrl: 'https://img.icons8.com/material/96/knight.png'
       zloeils: 1000,
     ),
     Achievement(
