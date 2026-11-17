@@ -44,6 +44,7 @@ dependencies:
   random_name_generator: ^1.0.0
   web_color_picker: ^1.0.0
   audioplayers: ^6.1.0
+  material_symbols_icons: ^4.2960.0
 
 dev_dependencies:
   flutter_test:
