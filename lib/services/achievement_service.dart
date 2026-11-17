@@ -192,7 +192,7 @@ class AchievementService {
       title: "Trident",
       subtitle: "Usiner 1 MT, 1 Zt AE et 1 ME",
       description: "C'est mieux qu'une fourchette ?",
-      //icon: Icons.fork_spoon,
+      icon: Icons.fork_spoon,
       imageUrl: 'https://img.icons8.com/fluency-systems-regular/96/trident.png',
       zloeils: 500,
     ),
@@ -209,7 +209,7 @@ class AchievementService {
       title: "Zt UE",
       subtitle: "Usiner 1 Zt de chaque tabagn's",
       description: "Validée l'UE !",
-      //icon: Icons.chess_knight,
+      icon: Icons.chess_rook,
       zloeils: 1000,
     ),
     Achievement(
@@ -217,7 +217,7 @@ class AchievementService {
       title: "MT²",
       subtitle: "Usiner 1 MT de chaque tabagn's",
       description: "Validée l'UE !",
-      //icon: Icons.chess_rook,
+      icon: Icons.chess_bishop,
       zloeils: 1000,
     ),
     Achievement(
@@ -225,7 +225,7 @@ class AchievementService {
       title: "MEME",
       subtitle: "Usiner 1 ME de chaque tabagn's",
       description: "Validée l'UE !",
-      //icon: Icons.chess_bishop,
+      icon: Icons.chess_knight,
       zloeils: 1000,
     ),
     Achievement(
