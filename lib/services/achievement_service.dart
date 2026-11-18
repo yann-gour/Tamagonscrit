@@ -175,15 +175,6 @@ class AchievementService {
       customBackgroundColor: const Color(0xFF800020),
     ),
     Achievement(
-      id: '508',
-      title: "508",
-      subtitle: "Usiner à 5h08",
-      description: "5h08 c'est les 508 !",
-      icon: Symbols.nest_clock_farsight_analog,
-      imageUrl: 'https://img.icons8.com/material/96/invert-selection--v1.png',
-      isHidden = true;
-    ),
-    Achievement(
       id: 'uai',
       title: "L'UAI",
       subtitle: "Usiner un Zt UAI de chaque tabagn's",
@@ -253,6 +244,24 @@ class AchievementService {
       imageUrl: 'https://img.icons8.com/ios-glyphs/90/frog.png',
       customIconColor: const Color(0xFF2E7D32),
       zloeils: 10,
+    ),
+    Achievement(
+      id: '508',
+      title: "508",
+      subtitle: "Usiner à 5h08",
+      description: "5h08 c'est les 508 !",
+      icon: Symbols.nest_clock_farsight_analog,
+      imageUrl: 'https://img.icons8.com/material/96/invert-selection--v1.png',
+      isHidden = true;
+    ),
+    Achievement(
+      id: 'bn',
+      title: "BN",
+      subtitle: "???",
+      description: "Si vous voyez roderdans cette enceinte, \nNe craignez rien car ce sont des Gadz'Arts !",
+      icon: Symbols.help,
+      imageUrl: 'https://img.icons8.com/material/96/ski-mask.png',
+      isHidden = true;
     ),
     Achievement(
       id: 'le_duc',
