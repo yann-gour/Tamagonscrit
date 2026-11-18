@@ -1314,7 +1314,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    _trads = (_trads + 50.0).clamp(0.0, 100.0);
+                    _trads = (_trads + 40.0).clamp(0.0, 100.0);
                     _energie = (_energie - 30.0).clamp(0.0, 100.0);
                   });
                   _saveStateToSupabase();
