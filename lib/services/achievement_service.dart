@@ -15,7 +15,7 @@ class Achievement {
   final Color? customBackgroundColor;
   final int zloeils;
   final String? audioPath;
-  final bool? isHidden
+  final bool isHidden;
   bool isUnlocked;
 
   Achievement({
@@ -252,16 +252,16 @@ class AchievementService {
       description: "5h08 c'est les 508 !",
       icon: Symbols.nest_clock_farsight_analog,
       imageUrl: 'https://img.icons8.com/material/96/invert-selection--v1.png',
-      isHidden = true;
+      isHidden: true,
     ),
     Achievement(
       id: 'bn',
       title: "BN",
       subtitle: "???",
-      description: "Si vous voyez roderdans cette enceinte, \nNe craignez rien car ce sont des Gadz'Arts !",
+      description: "Si vous voyez rôder dans cette enceinte, \nNe craignez rien car ce sont des Gadz'Arts !",
       icon: Symbols.help,
       imageUrl: 'https://img.icons8.com/material/96/ski-mask.png',
-      isHidden = true;
+      isHidden: true,
     ),
     Achievement(
       id: 'le_duc',
@@ -371,37 +371,49 @@ class AchievementService {
               unlockedIds.add('a_la_fraterns');
             }
 
-            if (!unlockedIds.contains('uai')) {
-              final Set<String> uaiTabagns = {};
-              final Set<String> mt2Tabagns = {};
-              final Set<String> zt2Tabagns = {};
-              final Set<String> me2Tabagns = {};
-              for (var c in conscritsData) {
-                if (c['bools'] == 'Zt UAI' && c['tabagns'] != null) {
-                  uaiTabagns.add(c['tabagns'].toString());
-                }
-                if (c['bools'] == 'MT' && c['tabagns'] != null) {
-                  mt2Tabagns.add(c['tabagns'].toString());
-                }
-                if (c['bools'] == 'Zt AE' && c['tabagns'] != null) {
-                  zt2Tabagns.add(c['tabagns'].toString());
-                }
-                if (c['bools'] == 'ME' && c['tabagns'] != null) {
-                  me2Tabagns.add(c['tabagns'].toString());
-                }
+            final Set<String> uaiTabagns = {};
+            final Set<String> mt2Tabagns = {};
+            final Set<String> zt2Tabagns = {};
+            final Set<String> me2Tabagns = {};
+            int tridentMt = 0;
+            int tridentZtAe = 0;
+            int tridentMe = 0;
+
+            for (var c in conscritsData) {
+              final b = c['bools']?.toString();
+              final t = c['tabagns']?.toString();
+
+              if (b == 'Zt UAI' && t != null) {
+                uaiTabagns.add(t);
               }
-              if (uaiTabagns.length >= 7) {
-                unlockedIds.add('uai');
+              if (b == 'MT') {
+                tridentMt++;
+                if (t != null) mt2Tabagns.add(t);
               }
-              if (mt2Tabagns.length >= 7) {
-                unlockedIds.add('mt2');
+              if (b == 'Zt AE') {
+                tridentZtAe++;
+                if (t != null) zt2Tabagns.add(t);
               }
-              if (zt2Tabagns.length >= 7) {
-                unlockedIds.add('zt2');
+              if (b == 'ME') {
+                tridentMe++;
+                if (t != null) me2Tabagns.add(t);
               }
-              if (me2Tabagns.length >= 7) {
-                unlockedIds.add('me2');
-              }
+            }
+
+            if (uaiTabagns.length >= 7 && !unlockedIds.contains('uai')) {
+              unlockedIds.add('uai');
+            }
+            if (mt2Tabagns.length >= 7 && !unlockedIds.contains('mt2')) {
+              unlockedIds.add('mt2');
+            }
+            if (zt2Tabagns.length >= 7 && !unlockedIds.contains('zt2')) {
+              unlockedIds.add('zt2');
+            }
+            if (me2Tabagns.length >= 7 && !unlockedIds.contains('me2')) {
+              unlockedIds.add('me2');
+            }
+            if (tridentMt >= 1 && tridentZtAe >= 1 && tridentMe >= 1 && !unlockedIds.contains('trident')) {
+              unlockedIds.add('trident');
             }
 
             if (!unlockedIds.contains('commits')) {

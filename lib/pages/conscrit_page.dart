@@ -337,6 +337,34 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     }
   }
 
+  Future<void> _checkTridentAchievement() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await _supabase
+          .from('conscrits')
+          .select('bools')
+          .eq('user_id', user.id);
+
+      int mtCount = 0;
+      int ztAeCount = 0;
+      int meCount = 0;
+      for (var row in (response as List)) {
+        final b = row['bools']?.toString();
+        if (b == 'MT') mtCount++;
+        if (b == 'Zt AE') ztAeCount++;
+        if (b == 'ME') meCount++;
+      }
+
+      if (mtCount >= 1 && ztAeCount >= 1 && meCount >= 1 && mounted) {
+        await AchievementService().unlockAndShowPopup(context, 'trident');
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification du succès Trident: $e');
+    }
+  }
+
   Future<void> _fetchConscritState() async {
     try {
       final user = _supabase.auth.currentUser;
@@ -424,6 +452,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         _checkUAIAchievement();
         _checkCommitsAchievement();
         _checkCrapaudAchievement();
+        _checkTridentAchievement();
 
         if (_tabagns == null || _tabagns!.isEmpty) {
           _showTabagnsRequiredDialog();
@@ -923,6 +952,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       _checkUAIAchievement();
       _checkCommitsAchievement();
       _checkCrapaudAchievement();
+      _checkTridentAchievement();
     } catch (e) {
       debugPrint('Erreur lors de la sauvegarde du conscrit terminé: $e');
     }

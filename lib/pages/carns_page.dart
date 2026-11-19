@@ -123,6 +123,9 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
               itemCount: achievements.length,
               itemBuilder: (context, index) {
                 final item = achievements[index];
+                final isHiddenAndLocked = !item.isUnlocked && item.isHidden;
+                final displaySubtitle = isHiddenAndLocked ? "???" : item.subtitle;
+
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 6.0),
                   elevation: item.isUnlocked ? 2 : 1,
@@ -198,7 +201,7 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                       children: [
                         Expanded(
                           child: Text(
-                            item.title,
+                            isHiddenAndLocked ? "???" : item.title,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -239,9 +242,9 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (item.subtitle.isNotEmpty) ...[
+                          if (displaySubtitle.isNotEmpty) ...[
                             Text(
-                              item.subtitle,
+                              displaySubtitle,
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
