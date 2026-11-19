@@ -44,6 +44,19 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
     super.dispose();
   }
 
+  String _formatProgressValue(double val) {
+    final int iVal = val.toInt();
+    if (iVal >= 1000000) {
+      final double m = iVal / 1000000.0;
+      return m == m.toInt() ? '${m.toInt()}M' : '${m.toStringAsFixed(1)}M';
+    }
+    if (iVal >= 10000) {
+      final double k = iVal / 1000.0;
+      return k == k.toInt() ? '${k.toInt()}k' : '${k.toStringAsFixed(1)}k';
+    }
+    return '$iVal';
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -56,6 +69,8 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
     final unlockedCount = _achievementService.unlockedCount;
     final totalCount = achievements.length;
     final double progress = totalCount > 0 ? unlockedCount / totalCount : 0.0;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -108,8 +123,8 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 10,
-                      backgroundColor: Colors.grey.shade200,
-                      color: Colors.amber.shade700,
+                      backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      color: isDark ? Colors.amber.shade500 : Colors.amber.shade700,
                     ),
                   ),
                 ],
@@ -211,22 +226,48 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                             ),
                           ),
                         ),
-                        Row(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.diamond,
-                              color: item.isUnlocked ? Colors.cyan : Colors.grey.shade400,
-                              size: 16,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.diamond,
+                                  color: item.isUnlocked ? Colors.cyan : Colors.grey.shade400,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '+${item.zloeils}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: item.isUnlocked ? Colors.cyan : Colors.grey.shade500,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '+${item.zloeils}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: item.isUnlocked ? Colors.cyan : Colors.grey.shade500,
-                              ),
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.groups,
+                                  size: 13,
+                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${item.unlockPercentage.toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -254,6 +295,39 @@ class _CarnsPageState extends State<CarnsPage> with AutomaticKeepAliveClientMixi
                               ),
                             ),
                             const SizedBox(height: 4),
+                          ],
+                          if (!item.isHidden) ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: item.maxProgress > 0
+                                          ? (item.currentProgress / item.maxProgress).clamp(0.0, 1.0)
+                                          : 0.0,
+                                      minHeight: 6,
+                                      backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                      color: item.isUnlocked
+                                          ? (isDark ? Colors.amber.shade500 : Colors.amber.shade700)
+                                          : Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_formatProgressValue(item.currentProgress)} / ${_formatProgressValue(item.maxProgress)}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: item.isUnlocked
+                                        ? (isDark ? Colors.amber.shade400 : Colors.amber.shade800)
+                                        : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
                           ],
                           Text(
                             item.isUnlocked ? item.description : "???",

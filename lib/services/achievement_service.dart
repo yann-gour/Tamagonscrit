@@ -16,6 +16,9 @@ class Achievement {
   final int zloeils;
   final String? audioPath;
   final bool isHidden;
+  double maxProgress;
+  double currentProgress;
+  double unlockPercentage;
   bool isUnlocked;
 
   Achievement({
@@ -30,6 +33,9 @@ class Achievement {
     this.zloeils = 100,
     this.audioPath,
     this.isHidden = false,
+    this.maxProgress = 1.0,
+    this.currentProgress = 0.0,
+    this.unlockPercentage = 0.0,
     this.isUnlocked = false,
   });
 }
@@ -59,6 +65,7 @@ class AchievementService {
       description: "Chanter bien haut d'une voix triomphale : \nLes Trad's mourront quand mourront les Gadz'Arts !",
       icon: Icons.military_tech,
       audioPath: 'trads.mp3',
+      maxProgress: 100,
     ),
     Achievement(
       id: 'aux_sacques',
@@ -67,15 +74,17 @@ class AchievementService {
       description: "Nous chanterons sans soucis de l'orage,\nQue votre action est digne d'un Gadz'Arts !",
       icon: Icons.history,
       audioPath: 'sacques.mp3',
+      maxProgress: 24,
     ),
     Achievement(
       id: 'aux_lourdes',
       title: "Aux Lourdés",
-      subtitle: "Faire lourder son conscrit",
+      subtitle: "Faire lourder son conscrit (7j)",
       description: "Mais vous aurez une force infinie, \nCar malgré tout vous êtes des Gadz'Arts !",
       icon: Icons.exit_to_app,
       zloeils: 200,
       audioPath: 'lourdes.mp3',
+      maxProgress: 168,
     ),
     Achievement(
       id: 'aux_disparus',
@@ -95,6 +104,7 @@ class AchievementService {
       icon: Icons.groups,
       zloeils: 1000,
       audioPath: 'fraterns.mp3',
+      maxProgress: 100,
     ),
     Achievement(
       id: 'a_bacchus',
@@ -176,11 +186,20 @@ class AchievementService {
     ),
     Achievement(
       id: 'uai',
-      title: "L'UAI",
+      title: "L'UAI a des athlètes !",
       subtitle: "Usiner un Zt UAI de chaque tabagn's",
       description: "L'UAI a des athlètes, qui connaissent le prix de l'effort !",
       icon: Icons.sports_score,
       zloeils: 500,
+      maxProgress: 7,
+    ),
+    Achievement(
+      id: 'colon',
+      title: ".o.o.",
+      subtitle: "U.i.e. u. .o.o.",
+      description: ".o...i.. e. .o.o.e !",
+      icon: Symbols.elderly,
+      isHidden: true,
     ),
     Achievement(
       id: 'commits',
@@ -189,6 +208,7 @@ class AchievementService {
       description: "Sonnez clairons aux notes éclatantes !",
       icon: Icons.groups,
       zloeils: 600,
+      maxProgress: 5,
     ),
     Achievement(
       id: 'trident',
@@ -198,6 +218,7 @@ class AchievementService {
       icon: Symbols.fork_spoon,
       imageUrl: 'https://img.icons8.com/fluency-systems-filled/96/trident.png',
       zloeils: 500,
+      maxProgress: 3,
     ),
     Achievement(
       id: 'brousouf',
@@ -207,6 +228,7 @@ class AchievementService {
       icon: Icons.savings,
       imageUrl: 'https://img.icons8.com/material/96/money-box--v1.png',
       zloeils: 1000,
+      maxProgress: 1000000,
     ),
     Achievement(
       id: 'zt2',
@@ -216,6 +238,7 @@ class AchievementService {
       icon: Symbols.chess_rook,
       imageUrl: 'https://img.icons8.com/material/96/rook.png',
       zloeils: 1000,
+      maxProgress: 7,
     ),
     Achievement(
       id: 'mt2',
@@ -225,6 +248,7 @@ class AchievementService {
       icon: Symbols.chess_bishop,
       imageUrl: 'https://img.icons8.com/material/96/bishop.png',
       zloeils: 1000,
+      maxProgress: 7,
     ),
     Achievement(
       id: 'me2',
@@ -234,6 +258,7 @@ class AchievementService {
       icon: Symbols.chess_knight,
       imageUrl: 'https://img.icons8.com/material/96/knight.png',
       zloeils: 1000,
+      maxProgress: 7,
     ),
     Achievement(
       id: 'crapaud',
@@ -251,13 +276,13 @@ class AchievementService {
       subtitle: "Usiner à 5h08",
       description: "5h08 c'est les 508 !",
       icon: Symbols.nest_clock_farsight_analog,
-      imageUrl: 'https://img.icons8.com/material/96/invert-selection--v1.png',
+      //imageUrl: 'https://img.icons8.com/material/96/invert-selection--v1.png',
       isHidden: true,
     ),
     Achievement(
       id: 'bn',
       title: "BN",
-      subtitle: "???",
+      subtitle: "Tricher",
       description: "Si vous voyez rôder dans cette enceinte, \nNe craignez rien car ce sont des Gadz'Arts !",
       icon: Symbols.help,
       imageUrl: 'https://img.icons8.com/material/96/ski-mask.png',
@@ -269,7 +294,8 @@ class AchievementService {
       subtitle: "Finir les autres pages du carn's",
       description: "Aider tout ce qui est utile, \nAttacher son nom à tout ce qui est bon",
       icon: Icons.workspace_premium,
-      zloeils: 10000,
+      zloeils: 1000000,
+      maxProgress: 25,
     ),
   ];
 
@@ -326,6 +352,21 @@ class AchievementService {
         }
       }
 
+      double maxTrads = 0.0;
+      double maxDurationHours = 0.0;
+      double currentBrousoufs = 0.0;
+      int monomeCount = 0;
+
+      final Set<String> uaiTabagns = {};
+      final Set<String> mt2Tabagns = {};
+      final Set<String> zt2Tabagns = {};
+      final Set<String> me2Tabagns = {};
+      int tridentMt = 0;
+      int tridentZtAe = 0;
+      int tridentMe = 0;
+      int mtCount = 0;
+      int ftCount = 0;
+
       // Auto-récupération intelligente basée sur la base de données Supabase du joueur
       if (user != null) {
         try {
@@ -337,58 +378,30 @@ class AchievementService {
           final List<Map<String, dynamic>> conscritsData =
               List<Map<String, dynamic>>.from(conscritsResponse);
 
+          monomeCount = conscritsData.length;
+
           if (conscritsData.isNotEmpty) {
             // S'il a au moins un conscrit terminé, il a eu 100 en birse ("A l'Ecole")
             if (!unlockedIds.contains('a_l_ecole')) unlockedIds.add('a_l_ecole');
 
             for (var c in conscritsData) {
               final trads = (c['trads'] as num?)?.toDouble() ?? 0.0;
-              if (trads >= 100.0 && !unlockedIds.contains('aux_trads')) {
-                unlockedIds.add('aux_trads');
-              }
-              if (trads <= 0.0 && !unlockedIds.contains('crapaud')) {
-                unlockedIds.add('crapaud');
-              }
-              final tabagns = c['tabagns']?.toString();
-              if (tabagns != null) {
-                final tabagnsMap = {
-                  'Ch': 'monome_ch',
-                  'An': 'monome_an',
-                  'Ai': 'monome_ai',
-                  'Cl': 'monome_cl',
-                  'Li': 'monome_li',
-                  'Bo': 'monome_bo',
-                  'Me': 'monome_me',
-                };
-                final achievId = tabagnsMap[tabagns];
-                if (achievId != null && !unlockedIds.contains(achievId)) {
-                  unlockedIds.add(achievId);
-                }
-              }
-            }
+              if (trads > maxTrads) maxTrads = trads;
 
-            if (conscritsData.length >= 100 && !unlockedIds.contains('a_la_fraterns')) {
-              unlockedIds.add('a_la_fraterns');
-            }
+              final durSeconds = (c['duration_seconds'] as num?)?.toDouble() ?? 0.0;
+              final durHours = durSeconds / 3600.0;
+              if (durHours > maxDurationHours) maxDurationHours = durHours;
 
-            final Set<String> uaiTabagns = {};
-            final Set<String> mt2Tabagns = {};
-            final Set<String> zt2Tabagns = {};
-            final Set<String> me2Tabagns = {};
-            int tridentMt = 0;
-            int tridentZtAe = 0;
-            int tridentMe = 0;
-
-            for (var c in conscritsData) {
               final b = c['bools']?.toString();
               final t = c['tabagns']?.toString();
 
-              if (b == 'Zt UAI' && t != null) {
-                uaiTabagns.add(t);
-              }
               if (b == 'MT') {
+                mtCount++;
                 tridentMt++;
                 if (t != null) mt2Tabagns.add(t);
+              }
+              if (b == 'FT') {
+                ftCount++;
               }
               if (b == 'Zt AE') {
                 tridentZtAe++;
@@ -398,34 +411,56 @@ class AchievementService {
                 tridentMe++;
                 if (t != null) me2Tabagns.add(t);
               }
+              if (b == 'Zt UAI' && t != null) {
+                uaiTabagns.add(t);
+              }
+
+              if (trads >= 100.0 && !unlockedIds.contains('aux_trads')) {
+                unlockedIds.add('aux_trads');
+              }
+              if (trads <= 0.0 && !unlockedIds.contains('crapaud')) {
+                unlockedIds.add('crapaud');
+              }
+              if (t != null) {
+                final tabagnsMap = {
+                  'Ch': 'monome_ch',
+                  'An': 'monome_an',
+                  'Ai': 'monome_ai',
+                  'Cl': 'monome_cl',
+                  'Li': 'monome_li',
+                  'Bo': 'monome_bo',
+                  'Me': 'monome_me',
+                };
+                final achievId = tabagnsMap[t];
+                if (achievId != null && !unlockedIds.contains(achievId)) {
+                  unlockedIds.add(achievId);
+                }
+              }
+              if (b == 'MT' && t == 'Ch' && !unlockedIds.contains('colon')) {
+                unlockedIds.add('colon');
+              }
             }
 
-            if (uaiTabagns.length >= 7 && !unlockedIds.contains('uai')) {
+            if (monomeCount >= getMaxProgress('a_la_fraterns') && !unlockedIds.contains('a_la_fraterns')) {
+              unlockedIds.add('a_la_fraterns');
+            }
+            if (uaiTabagns.length >= getMaxProgress('uai') && !unlockedIds.contains('uai')) {
               unlockedIds.add('uai');
             }
-            if (mt2Tabagns.length >= 7 && !unlockedIds.contains('mt2')) {
+            if (mt2Tabagns.length >= getMaxProgress('mt2') && !unlockedIds.contains('mt2')) {
               unlockedIds.add('mt2');
             }
-            if (zt2Tabagns.length >= 7 && !unlockedIds.contains('zt2')) {
+            if (zt2Tabagns.length >= getMaxProgress('zt2') && !unlockedIds.contains('zt2')) {
               unlockedIds.add('zt2');
             }
-            if (me2Tabagns.length >= 7 && !unlockedIds.contains('me2')) {
+            if (me2Tabagns.length >= getMaxProgress('me2') && !unlockedIds.contains('me2')) {
               unlockedIds.add('me2');
             }
             if (tridentMt >= 1 && tridentZtAe >= 1 && tridentMe >= 1 && !unlockedIds.contains('trident')) {
               unlockedIds.add('trident');
             }
-
-            if (!unlockedIds.contains('commits')) {
-              int mtCount = 0;
-              int ftCount = 0;
-              for (var c in conscritsData) {
-                if (c['bools'] == 'MT') mtCount++;
-                if (c['bools'] == 'FT') ftCount++;
-              }
-              if (mtCount >= 1 && ftCount >= 4) {
-                unlockedIds.add('commits');
-              }
+            if (mtCount >= 1 && ftCount >= 4 && !unlockedIds.contains('commits')) {
+              unlockedIds.add('commits');
             }
           }
 
@@ -439,13 +474,35 @@ class AchievementService {
           if (stateResponse != null) {
             final birse = (stateResponse['birse'] as num?)?.toDouble() ?? 0.0;
             final trads = (stateResponse['trads'] as num?)?.toDouble() ?? 0.0;
+            final brousoufs = (stateResponse['brousoufs'] as num?)?.toDouble() ?? 0.0;
             final activity = stateResponse['activity']?.toString();
+            final startTimeStr = stateResponse['start_time']?.toString();
+
+            currentBrousoufs = brousoufs;
+            if (trads > maxTrads) maxTrads = trads;
+
+            if (startTimeStr != null && startTimeStr.isNotEmpty) {
+              final startTime = DateTime.tryParse(startTimeStr);
+              if (startTime != null) {
+                final elapsedHours = DateTime.now().toUtc().difference(startTime).inSeconds / 3600.0;
+                if (elapsedHours > maxDurationHours) maxDurationHours = elapsedHours;
+              }
+            }
 
             if (birse >= 100.0 && !unlockedIds.contains('a_l_ecole')) {
               unlockedIds.add('a_l_ecole');
             }
-            if (trads >= 100.0 && !unlockedIds.contains('aux_trads')) {
+            if (trads >= getMaxProgress('aux_trads') && !unlockedIds.contains('aux_trads')) {
               unlockedIds.add('aux_trads');
+            }
+            if (brousoufs >= getMaxProgress('brousouf') && !unlockedIds.contains('brousouf')) {
+              unlockedIds.add('brousouf');
+            }
+            if (maxDurationHours >= getMaxProgress('aux_sacques') && !unlockedIds.contains('aux_sacques')) {
+              unlockedIds.add('aux_sacques');
+            }
+            if (maxDurationHours >= getMaxProgress('aux_lourdes') && !unlockedIds.contains('aux_lourdes')) {
+              unlockedIds.add('aux_lourdes');
             }
             if (activity == 'chouille' && !unlockedIds.contains('a_bacchus')) {
               unlockedIds.add('a_bacchus');
@@ -456,8 +513,87 @@ class AchievementService {
         }
       }
 
+      int commitsProgress = (mtCount > 0 ? 1 : 0) + (ftCount > 4 ? 4 : ftCount);
+      int tridentProgress = (tridentMt > 0 ? 1 : 0) + (tridentZtAe > 0 ? 1 : 0) + (tridentMe > 0 ? 1 : 0);
+      int otherUnlockedCount = unlockedIds.where((id) => id != 'le_duc').length;
+
       for (var achievement in _achievements) {
+        if (achievement.id == 'le_duc') {
+          achievement.maxProgress = (_achievements.length - 1).toDouble();
+        }
+
         achievement.isUnlocked = unlockedIds.contains(achievement.id);
+
+        if (achievement.isUnlocked) {
+          achievement.currentProgress = achievement.maxProgress;
+        } else {
+          switch (achievement.id) {
+            case 'le_duc':
+              achievement.currentProgress = otherUnlockedCount.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'aux_trads':
+              achievement.currentProgress = maxTrads.clamp(0.0, achievement.maxProgress);
+              break;
+            case 'aux_sacques':
+              achievement.currentProgress = maxDurationHours.clamp(0.0, achievement.maxProgress);
+              break;
+            case 'aux_lourdes':
+              achievement.currentProgress = maxDurationHours.clamp(0.0, achievement.maxProgress);
+              break;
+            case 'a_la_fraterns':
+              achievement.currentProgress = monomeCount.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'uai':
+              achievement.currentProgress = uaiTabagns.length.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'mt2':
+              achievement.currentProgress = mt2Tabagns.length.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'zt2':
+              achievement.currentProgress = zt2Tabagns.length.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'me2':
+              achievement.currentProgress = me2Tabagns.length.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'commits':
+              achievement.currentProgress = commitsProgress.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'trident':
+              achievement.currentProgress = tridentProgress.toDouble().clamp(0.0, achievement.maxProgress);
+              break;
+            case 'brousouf':
+              achievement.currentProgress = currentBrousoufs.clamp(0.0, achievement.maxProgress);
+              break;
+            default:
+              achievement.currentProgress = 0.0;
+              break;
+          }
+        }
+      }
+
+      // Calcul des statistiques globales pour chaque succès depuis la table profiles Supabase
+      try {
+        final profilesRes = await Supabase.instance.client
+            .from('profiles')
+            .select('achievements');
+        final List<dynamic> profilesList = profilesRes as List<dynamic>;
+        final int totalProfiles = profilesList.length;
+        if (totalProfiles > 0) {
+          final Map<String, int> counts = {};
+          for (var p in profilesList) {
+            final List<dynamic> userAchievs = (p['achievements'] as List<dynamic>?) ?? [];
+            for (var id in userAchievs) {
+              final idStr = id.toString();
+              counts[idStr] = (counts[idStr] ?? 0) + 1;
+            }
+          }
+          for (var achievement in _achievements) {
+            final count = counts[achievement.id] ?? 0;
+            achievement.unlockPercentage = (count / totalProfiles) * 100.0;
+          }
+        }
+      } catch (e) {
+        debugPrint('Erreur lors du calcul des statistiques globales de succès: $e');
       }
 
       // Vérifier le succès ultime "Le Duc"
@@ -516,6 +652,15 @@ class AchievementService {
       });
     } catch (e) {
       debugPrint('Note: Synchro table profiles achievements: $e');
+    }
+  }
+
+  double getMaxProgress(String achievementId) {
+    try {
+      final a = _achievements.firstWhere((a) => a.id == achievementId);
+      return a.maxProgress;
+    } catch (_) {
+      return 1.0;
     }
   }
 

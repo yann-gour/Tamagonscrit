@@ -163,26 +163,27 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
 
   void _checkAchievements() {
     if (!mounted) return;
+    final service = AchievementService();
     if (_birse >= 100.0) {
-      AchievementService().unlockAndShowPopup(context, 'a_l_ecole');
+      service.unlockAndShowPopup(context, 'a_l_ecole');
     }
-    if (_trads >= 100.0) {
-      AchievementService().unlockAndShowPopup(context, 'aux_trads');
+    if (_trads >= service.getMaxProgress('aux_trads')) {
+      service.unlockAndShowPopup(context, 'aux_trads');
     }
     if (_startTime != null && _birse < 100.0) {
       final elapsedSeconds = DateTime.now().toUtc().difference(_startTime!).inSeconds;
-      if (elapsedSeconds >= 86400) {
-        AchievementService().unlockAndShowPopup(context, 'aux_sacques');
+      if (elapsedSeconds >= service.getMaxProgress('aux_sacques') * 3600) {
+        service.unlockAndShowPopup(context, 'aux_sacques');
       }
-      if (elapsedSeconds >= 7 * 86400) {
-        AchievementService().unlockAndShowPopup(context, 'aux_lourdes');
+      if (elapsedSeconds >= service.getMaxProgress('aux_lourdes') * 3600) {
+        service.unlockAndShowPopup(context, 'aux_lourdes');
       }
     }
     if (_activity == 'chouille') {
-      AchievementService().unlockAndShowPopup(context, 'a_bacchus');
+      service.unlockAndShowPopup(context, 'a_bacchus');
     }
-    if (_brousoufs >= 1000000.0) {
-      AchievementService().unlockAndShowPopup(context, 'brousouf');
+    if (_brousoufs >= service.getMaxProgress('brousouf')) {
+      service.unlockAndShowPopup(context, 'brousouf');
     }
   }
 
@@ -195,7 +196,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           .select('id')
           .eq('user_id', user.id);
       final count = (response as List).length;
-      if (count >= 100 && mounted) {
+      if (count >= AchievementService().getMaxProgress('a_la_fraterns') && mounted) {
         AchievementService().unlockAndShowPopup(context, 'a_la_fraterns');
       }
     } catch (e) {
@@ -365,6 +366,29 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
     }
   }
 
+  Future<void> _checkColonAchievement() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await _supabase
+          .from('conscrits')
+          .select('bools, tabagns')
+          .eq('user_id', user.id);
+
+      for (var row in (response as List)) {
+        final b = row['bools']?.toString();
+        final t = row['tabagns']?.toString();
+        if (b == 'MT' && t == 'Ch' && mounted) {
+          await AchievementService().unlockAndShowPopup(context, 'colon');
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur vérification du succès Colon: $e');
+    }
+  }
+
   Future<void> _fetchConscritState() async {
     try {
       final user = _supabase.auth.currentUser;
@@ -453,6 +477,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
         _checkCommitsAchievement();
         _checkCrapaudAchievement();
         _checkTridentAchievement();
+        _checkColonAchievement();
 
         if (_tabagns == null || _tabagns!.isEmpty) {
           _showTabagnsRequiredDialog();
@@ -953,6 +978,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       _checkCommitsAchievement();
       _checkCrapaudAchievement();
       _checkTridentAchievement();
+      _checkColonAchievement();
     } catch (e) {
       debugPrint('Erreur lors de la sauvegarde du conscrit terminé: $e');
     }
