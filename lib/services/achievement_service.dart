@@ -199,7 +199,6 @@ class AchievementService {
       subtitle: "U.i.e. u. .o.o.",
       description: ".o...i.. e. .o.o.e !",
       icon: Symbols.elderly,
-      isHidden: true,
     ),
     Achievement(
       id: 'commits',
