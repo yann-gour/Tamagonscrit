@@ -66,6 +66,13 @@ final List<Announcement> allAnnouncements = [
     endDate: DateTime(2026, 3, 21),
   ),
   Announcement(
+    id: 'juo',
+    title: "Journées Usines Ouvertes",
+    text: "Allez tout de suite visiter l'usine la plus proche !",
+    startDate: DateTime(2026, 4, 2),
+    endDate: DateTime(2026, 4, 3),
+  ),
+  Announcement(
     id: '100j_kin',
     title: "Nuit des 100 Jours à KIN",
     text: "Joyeuse Nuit des 100 Jours aux KINois !",
