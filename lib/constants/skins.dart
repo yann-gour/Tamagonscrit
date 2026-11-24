@@ -122,6 +122,12 @@ class AvatarSkins {
       zloeilsPrice: 1000,
       assetPath: 'assets/skin_jaune.png',
     ),
+    SkinItem(
+      id: 'nols',
+      name: "Nol's",
+      zloeilsPrice: 1000000,
+      assetPath: 'assets/skin_nols.png',
+    ),
   ];
 
   static List<SkinItem> get sortedSkins {
