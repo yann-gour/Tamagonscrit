@@ -15,6 +15,9 @@ import 'monome_page.dart';
 import 'profile_page.dart';
 import '../services/notification_service.dart';
 import '../services/achievement_service.dart';
+import 'package:geolocator/geolocator.dart';
+import '../models/location_event.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConscritPage extends StatefulWidget {
   final bool isVisible;
@@ -63,6 +66,8 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   String? _lastHeureTradDate;
   bool _is508Rotated = false;
   String? _last508DateTriggered;
+  DateTime? _lastGpsCheckTime;
+  final Set<String> _triggeredLocationEvents = {};
   final Random _random = Random();
 
   static const Map<String, String> tabagnsFullNames = {
@@ -79,7 +84,18 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
   void initState() {
     super.initState();
     NotificationService().requestPermissions();
+    _loadTriggeredLocationEvents();
     _fetchConscritState();
+  }
+
+  Future<void> _loadTriggeredLocationEvents() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('triggered_location_events') ?? [];
+      setState(() {
+        _triggeredLocationEvents.addAll(list);
+      });
+    } catch (_) {}
   }
 
   @override
@@ -567,6 +583,7 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
           _checkHeureTradEvent();
           _check508Event();
           _checkRandomEvent();
+          _checkGpsEvents();
         }
       });
     });
@@ -625,6 +642,57 @@ class _ConscritPageState extends State<ConscritPage> with AutomaticKeepAliveClie
       _lastEventTime = DateTime.now();
       final event = allRandomEvents[_random.nextInt(allRandomEvents.length)];
       _showEventDialog(event);
+    }
+  }
+
+  Future<void> _checkGpsEvents() async {
+    if (!_isPageVisible || _isEventDialogOpen || _birse >= 100.0 || _isLoading || _isProcessingImages) return;
+
+    final now = DateTime.now();
+    if (_lastGpsCheckTime != null) {
+      if (now.difference(_lastGpsCheckTime!).inSeconds < 30) return;
+    }
+    _lastGpsCheckTime = now;
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      for (var locEvent in allLocationEvents) {
+        if (_triggeredLocationEvents.contains(locEvent.id)) continue;
+
+        double distance = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          locEvent.latitude,
+          locEvent.longitude,
+        );
+
+        if (distance <= locEvent.radiusMeters) {
+          _triggeredLocationEvents.add(locEvent.id);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setStringList('triggered_location_events', _triggeredLocationEvents.toList());
+
+          _showEventDialog(locEvent.event);
+          if (locEvent.achievementId != null && mounted) {
+            AchievementService().unlockAndShowPopup(context, locEvent.achievementId!);
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur géolocalisation GPS: $e');
     }
   }
 

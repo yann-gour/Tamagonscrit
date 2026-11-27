@@ -45,6 +45,7 @@ dependencies:
   web_color_picker: ^1.0.0
   audioplayers: ^6.1.0
   material_symbols_icons: ^4.2960.0
+  geolocator: ^13.0.2
 
 dev_dependencies:
   flutter_test:
